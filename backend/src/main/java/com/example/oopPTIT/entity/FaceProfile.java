@@ -1,7 +1,10 @@
 package com.example.oopPTIT.entity;
 
+import com.example.oopPTIT.util.Status;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
@@ -29,6 +32,7 @@ public class FaceProfile extends AbtractEntity<Long> {
     @Column(name = "model_name", nullable = false, length = 255)
     private String modelName;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 255)
-    private String status;
+    private Status status;
 }

@@ -1,7 +1,10 @@
 package com.example.oopPTIT.entity;
 
+import com.example.oopPTIT.util.Status;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -29,8 +32,9 @@ public class Attendance extends AbtractEntity<Long> {
     @Column(name = "recognized_at", nullable = false)
     private LocalDateTime recognizedAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 255)
-    private String status;
+    private TimeStatus status;
 
     @Column(name = "method", nullable = false)
     private Integer method;

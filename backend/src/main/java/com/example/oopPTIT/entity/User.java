@@ -1,7 +1,11 @@
 package com.example.oopPTIT.entity;
 
+import com.example.oopPTIT.util.Role;
+import com.example.oopPTIT.util.Status;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -26,8 +30,9 @@ public class User extends AbtractEntity<Long> {
     private String password;
 
     @Column(name = "role", nullable = false, length = 255)
-    private String role;
+    private Role role;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 255)
-    private String status;
+    private Status status;
 }

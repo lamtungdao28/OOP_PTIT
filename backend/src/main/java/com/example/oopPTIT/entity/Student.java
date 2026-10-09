@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -12,6 +13,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "STUDENTS")
@@ -36,4 +39,10 @@ public class Student extends AbtractEntity<Long> {
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "USERSid", nullable = false, unique = true)
     private User user;
+
+    @OneToMany(mappedBy = "student", fetch = FetchType.LAZY)
+    private Set<StudentHasCourseClass> studentHasCourseClasses = new HashSet<>();
+
+    @OneToMany(mappedBy = "student", fetch = FetchType.LAZY)
+    private Set<Attendance> attendances = new HashSet<>();
 }

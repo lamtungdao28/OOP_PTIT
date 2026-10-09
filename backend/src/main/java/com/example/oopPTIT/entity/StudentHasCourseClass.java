@@ -1,7 +1,10 @@
 package com.example.oopPTIT.entity;
 
+import com.example.oopPTIT.util.Status;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -27,6 +30,7 @@ public class StudentHasCourseClass extends AbtractEntity<Long> {
     @JoinColumn(name = "STUDENTSid", nullable = false)
     private Student student;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 255)
-    private String status;
+    private Status status;
 }

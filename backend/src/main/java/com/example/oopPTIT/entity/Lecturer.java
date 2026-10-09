@@ -4,12 +4,16 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "LECTURERS")
@@ -34,4 +38,7 @@ public class Lecturer extends AbtractEntity<Long> {
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "USERSid", nullable = false, unique = true)
     private User user;
+
+    @OneToMany(mappedBy = "lecturer", fetch = FetchType.LAZY)
+    private Set<CourseClass> courseClasses = new HashSet<>();
 }
