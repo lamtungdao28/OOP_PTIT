@@ -1,6 +1,7 @@
 package com.example.oopPTIT.entity;
 
 import com.example.oopPTIT.util.Status;
+import com.example.oopPTIT.util.TimeStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
