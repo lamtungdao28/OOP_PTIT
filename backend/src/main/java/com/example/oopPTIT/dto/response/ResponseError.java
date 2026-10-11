@@ -1,7 +1,7 @@
 package com.example.oopPTIT.dto.response;
 
-public class ResponseError extends ResponseData<Void>{
-    public ResponseError(String status, String message) {
+public class ResponseError extends ResponseData{
+    public ResponseError(int status, String message) {
         super(status, message);
     }
 }
