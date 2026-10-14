@@ -44,6 +44,10 @@ public class CourseClass extends AbtractEntity<Long> {
     @JoinColumn(name = "SUBJECTSid", nullable = false)
     private Subject subject;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "SEMESTERSid", nullable = false)
+    private Semester semester;
+
     @OneToMany(mappedBy = "courseClass", fetch = FetchType.LAZY)
     private Set<ClassSession> classSessions = new HashSet<>();
 
