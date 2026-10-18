@@ -8,10 +8,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -22,6 +19,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Subject extends AbtractEntity<Long> {
 
     @Column(name = "subject_code", nullable = false, unique = true, length = 255)
@@ -34,8 +32,9 @@ public class Subject extends AbtractEntity<Long> {
     private Integer credits;
 
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     @Column(name = "status", nullable = false, length = 255)
-    private Status status;
+    private Status status = Status.ACTIVE;
 
     @OneToMany(mappedBy = "subject", fetch = FetchType.LAZY)
     private Set<CourseClass> courseClasses = new HashSet<>();

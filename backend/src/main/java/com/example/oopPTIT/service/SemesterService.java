@@ -1,0 +1,61 @@
+package com.example.oopPTIT.service;
+
+import com.example.oopPTIT.dto.request.CreateSemesterRequest;
+import com.example.oopPTIT.dto.response.ResponsePage;
+import com.example.oopPTIT.dto.response.SemesterResponse;
+import com.example.oopPTIT.entity.Semester;
+import com.example.oopPTIT.repository.SemesterRepository;
+import com.example.oopPTIT.repository.specification.SemesterSpecificationBuilder;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+@Service
+@RequiredArgsConstructor
+public class SemesterService {
+    private static final Pattern SEARCH_PATTERN = Pattern.compile("(\\w+?)([<:>~!])(.*)(\\p{Punct}?)(\\p{Punct}?)");
+
+    private final SemesterRepository semesterRepository;
+
+    public Long addSemester(CreateSemesterRequest request) {
+        Semester semester = new Semester();
+        semester.setName(request.getName());
+        return semesterRepository.save(semester).getId();
+    }
+
+    public ResponsePage<?> advanceSearchWithSpecification(Pageable pageable, String[] semester) {
+        Specification<Semester> specification = Specification.unrestricted();
+        if (semester != null) {
+            SemesterSpecificationBuilder builder = new SemesterSpecificationBuilder();
+            for (String filter : semester) {
+                Matcher matcher = SEARCH_PATTERN.matcher(filter);
+                if (matcher.find()) {
+                    builder.with(matcher.group(1), matcher.group(2), matcher.group(3),
+                            matcher.group(4), matcher.group(5));
+                }
+            }
+            Specification<Semester> filters = builder.build();
+            if (filters != null) {
+                specification = filters;
+            }
+        }
+        Page<SemesterResponse> semesters = semesterRepository.findAll(specification, pageable)
+                .map(item -> SemesterResponse.builder()
+                        .id(item.getId())
+                        .name(item.getName())
+                        .createdAt(item.getCreatedAt())
+                        .updatedAt(item.getUpdatedAt())
+                        .build());
+        return ResponsePage.builder()
+                .pageNo(semesters.getNumber())
+                .pageSize(semesters.getSize())
+                .totalPage(semesters.getTotalPages())
+                .items(semesters.getContent())
+                .build();
+    }
+}
