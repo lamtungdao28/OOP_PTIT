@@ -64,7 +64,7 @@ class SearchLecturerIntegrationTests {
     void returnsStudentStylePageAndIdOrderingWithNoFilters() throws Exception {
         mvc.perform(get("/api/admin/lecturers"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("200"))
+                .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.pageNo").value(0))
                 .andExpect(jsonPath("$.data.pageSize").value(20))
                 .andExpect(jsonPath("$.data.totalPage").value(1))
@@ -198,28 +198,28 @@ class SearchLecturerIntegrationTests {
     void rejectsMalformedOrUnsupportedFilters(String filter) throws Exception {
         mvc.perform(get("/api/admin/lecturers").param("lecturer", filter))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("400"));
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test
     void rejectsInvalidFilterEvenWhenOtherFiltersAreValid() throws Exception {
         mvc.perform(get("/api/admin/lecturers").param("lecturer", "fullName~Nguyen", "unknown:value"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("400"));
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test
     void rejectsUnsupportedSortField() throws Exception {
         mvc.perform(get("/api/admin/lecturers").param("sort", "user.password,asc"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("400"));
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test
     void rejectsOverlongFilterValues() throws Exception {
         mvc.perform(get("/api/admin/lecturers").param("lecturer", "fullName~" + "a".repeat(256)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("400"));
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test

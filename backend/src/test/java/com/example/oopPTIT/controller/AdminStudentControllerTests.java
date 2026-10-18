@@ -64,7 +64,7 @@ class AdminStudentControllerTests {
         mvc.perform(get("/api/admin/students")
                         .param("student", "fullName~An", "studentCode:B23*"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("200"))
+                .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.pageNo").value(0))
                 .andExpect(jsonPath("$.data.pageSize").value(20))
                 .andExpect(jsonPath("$.data.totalPage").value(1))
@@ -109,7 +109,7 @@ class AdminStudentControllerTests {
     void rejectsInvalidFiltersBeforeQueryingRepository() throws Exception {
         mvc.perform(get("/api/admin/students").param("student", "password~secret"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("400"));
+                .andExpect(jsonPath("$.status").value(400));
 
         verifyNoInteractions(repository);
     }

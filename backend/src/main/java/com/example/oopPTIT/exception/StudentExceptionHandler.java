@@ -20,30 +20,30 @@ public class StudentExceptionHandler {
     @ExceptionHandler({DuplicateStudentException.class, DuplicateLecturerException.class})
     public ResponseEntity<ResponseError> handleDuplicate(RuntimeException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ResponseError("409", exception.getMessage()));
+                .body(new ResponseError(HttpStatus.CONFLICT.value(), exception.getMessage()));
     }
 
     // Database constraints also protect against concurrent requests passing the pre-checks.
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ResponseError> handleIntegrityViolation() {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ResponseError("409", "Data conflicts with database constraints"));
+                .body(new ResponseError(HttpStatus.CONFLICT.value(), "Data conflicts with database constraints"));
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ResponseError> handleNotFound(ResourceNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ResponseError("404", exception.getMessage()));
+                .body(new ResponseError(HttpStatus.NOT_FOUND.value(), exception.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ResponseError> handleInvalidParameter() {
-        return ResponseEntity.badRequest().body(new ResponseError("400", "Invalid request parameter"));
+        return ResponseEntity.badRequest().body(new ResponseError(HttpStatus.BAD_REQUEST.value(), "Invalid request parameter"));
     }
 
     @ExceptionHandler({InvalidStudentFilterException.class, InvalidLecturerFilterException.class})
     public ResponseEntity<ResponseError> handleInvalidFilter(RuntimeException exception) {
-        return ResponseEntity.badRequest().body(new ResponseError("400", exception.getMessage()));
+        return ResponseEntity.badRequest().body(new ResponseError(HttpStatus.BAD_REQUEST.value(), exception.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -51,12 +51,12 @@ public class StudentExceptionHandler {
         String message = exception.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .distinct().sorted().collect(Collectors.joining("; "));
-        return ResponseEntity.badRequest().body(new ResponseError("400", message));
+        return ResponseEntity.badRequest().body(new ResponseError(HttpStatus.BAD_REQUEST.value(), message));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ResponseError> handleUnreadableBody() {
         return ResponseEntity.badRequest()
-                .body(new ResponseError("400", "Invalid JSON body or field format"));
+                .body(new ResponseError(HttpStatus.BAD_REQUEST.value(), "Invalid JSON body or field format"));
     }
 }

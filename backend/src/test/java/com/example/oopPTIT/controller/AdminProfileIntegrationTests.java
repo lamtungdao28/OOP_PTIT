@@ -119,7 +119,8 @@ class AdminProfileIntegrationTests {
 
         mvc.perform(get("/api/admin/lecturers/{id}", id))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("200"))
+                .andExpect(jsonPath("$.status").isNumber())
+                .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.message").value("Lecturer retrieved successfully"))
                 .andExpect(jsonPath("$.data.id").value(id.intValue()))
                 .andExpect(jsonPath("$.data.lecturerCode").value("GV02"))
@@ -138,7 +139,8 @@ class AdminProfileIntegrationTests {
     void returnsNotFoundWhenLecturerIdDoesNotExist() throws Exception {
         mvc.perform(get("/api/admin/lecturers/999999"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value("404"))
+                .andExpect(jsonPath("$.status").isNumber())
+                .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message").value("Lecturer not found: 999999"))
                 .andExpect(jsonPath("$.data").doesNotExist());
     }
@@ -148,7 +150,8 @@ class AdminProfileIntegrationTests {
     void rejectsMalformedLecturerIds(String id) throws Exception {
         mvc.perform(get("/api/admin/lecturers/{id}", id))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("400"))
+                .andExpect(jsonPath("$.status").isNumber())
+                .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.data").doesNotExist());
     }
 

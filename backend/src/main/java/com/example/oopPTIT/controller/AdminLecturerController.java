@@ -25,25 +25,25 @@ public class AdminLecturerController {
     public ResponseData<ResponsePage<List<LecturerResponse>>> getLecturers(
             @PageableDefault(size = 20, sort = "id") Pageable pageable,
             @RequestParam(name = "lecturer", required = false) String[] lecturer) {
-        return new ResponseData<>("200", "Lecturers retrieved successfully",
+        return new ResponseData<>(HttpStatus.OK.value(), "Lecturers retrieved successfully",
                 lecturerService.advanceSearchWithSpecification(pageable, lecturer));
     }
 
     @GetMapping("/{id}")
     public ResponseData<LecturerResponse> getLecturer(@PathVariable("id") Long id) {
-        return new ResponseData<>("200", "Lecturer retrieved successfully", lecturerService.getLecturer(id));
+        return new ResponseData<>(HttpStatus.OK.value(), "Lecturer retrieved successfully", lecturerService.getLecturer(id));
     }
 
     @PostMapping
     public ResponseEntity<ResponseData<LecturerResponse>> createLecturer(
             @Valid @RequestBody CreateLecturerRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(new ResponseData<>("201",
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ResponseData<>(HttpStatus.CREATED.value(),
                 "Lecturer created successfully", lecturerService.createLecturer(request)));
     }
 
     @PatchMapping("/{id}")
     public ResponseData<LecturerResponse> updateLecturer(@PathVariable("id") Long id,
             @Valid @RequestBody UpdateLecturerRequest request) {
-        return new ResponseData<>("200", "Lecturer updated successfully", lecturerService.updateLecturer(id, request));
+        return new ResponseData<>(HttpStatus.OK.value(), "Lecturer updated successfully", lecturerService.updateLecturer(id, request));
     }
 }

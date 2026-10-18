@@ -34,19 +34,19 @@ public class AdminStudentController {
 
     @GetMapping("/{id}")
     public ResponseData<StudentDetailResponse> getStudent(@PathVariable("id") Long id) {
-        return new ResponseData<>("200", "Student retrieved successfully", studentService.getStudent(id));
+        return new ResponseData<>(HttpStatus.OK.value(), "Student retrieved successfully", studentService.getStudent(id));
     }
 
     @PatchMapping("/{id}")
     public ResponseData<StudentDetailResponse> updateStudent(@PathVariable("id") Long id,
             @Valid @RequestBody UpdateStudentRequest request) {
-        return new ResponseData<>("200", "Student updated successfully", studentService.updateStudent(id, request));
+        return new ResponseData<>(HttpStatus.OK.value(), "Student updated successfully", studentService.updateStudent(id, request));
     }
 
     @PatchMapping("/{id}/status")
     public ResponseData<StudentDetailResponse> updateStudentStatus(@PathVariable("id") Long id,
             @Valid @RequestBody UpdateStudentStatusRequest request) {
-        return new ResponseData<>("200", "Student status updated successfully",
+        return new ResponseData<>(HttpStatus.OK.value(), "Student status updated successfully",
                 studentService.updateStudentStatus(id, request));
     }
 
@@ -54,7 +54,7 @@ public class AdminStudentController {
     public ResponseEntity<ResponseData<StudentResponse>> createStudent(
             @Valid @RequestBody CreateStudentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ResponseData<>("201", "Student created successfully",
+                .body(new ResponseData<>(HttpStatus.CREATED.value(), "Student created successfully",
                         studentService.createStudent(request)));
     }
 
@@ -62,7 +62,7 @@ public class AdminStudentController {
     public ResponseData<ResponsePage<List<StudentResponse>>> searchStudents(
             @PageableDefault(size = 20, sort = "id") Pageable pageable,
             @RequestParam(name = "student", required = false) String[] student) {
-        return new ResponseData<>("200", "Students retrieved successfully",
+        return new ResponseData<>(HttpStatus.OK.value(), "Students retrieved successfully",
                 studentService.advanceSearchWithSpecification(pageable, student));
     }
 }

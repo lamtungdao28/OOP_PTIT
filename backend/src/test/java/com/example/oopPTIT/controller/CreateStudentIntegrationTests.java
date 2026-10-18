@@ -58,7 +58,8 @@ class CreateStudentIntegrationTests {
     void createsLinkedAccountAndProfileWithHashedPassword() throws Exception {
         mvc.perform(post("/api/admin/students").contentType(MediaType.APPLICATION_JSON).content(BODY))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("201"))
+                .andExpect(jsonPath("$.status").isNumber())
+                .andExpect(jsonPath("$.status").value(201))
                 .andExpect(jsonPath("$.data.id").isNumber())
                 .andExpect(jsonPath("$.data.studentCode").value("B23DCCN001"))
                 .andExpect(jsonPath("$.data.password").doesNotExist())
@@ -97,7 +98,8 @@ class CreateStudentIntegrationTests {
         };
         mvc.perform(post("/api/admin/students").contentType(MediaType.APPLICATION_JSON).content(second))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status").value("409"));
+                .andExpect(jsonPath("$.status").isNumber())
+                .andExpect(jsonPath("$.status").value(409));
         assertThat(users.count()).isEqualTo(1);
         assertThat(students.count()).isEqualTo(1);
     }
@@ -107,7 +109,7 @@ class CreateStudentIntegrationTests {
     void rejectsInvalidBodyWithoutWritingData(String body) throws Exception {
         mvc.perform(post("/api/admin/students").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("400"));
+                .andExpect(jsonPath("$.status").value(400));
         assertThat(users.count()).isZero();
         assertThat(students.count()).isZero();
     }

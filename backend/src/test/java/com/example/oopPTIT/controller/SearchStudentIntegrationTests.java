@@ -60,7 +60,7 @@ class SearchStudentIntegrationTests {
     void returnsSubjectStylePageAndIdOrderingWithNoFilters() throws Exception {
         mvc.perform(get("/api/admin/students"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("200"))
+                .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.pageNo").value(0))
                 .andExpect(jsonPath("$.data.pageSize").value(20))
                 .andExpect(jsonPath("$.data.totalPage").value(1))
@@ -172,7 +172,7 @@ class SearchStudentIntegrationTests {
     void rejectsMalformedOrUnsupportedFilters(String filter) throws Exception {
         mvc.perform(get("/api/admin/students").param("student", filter))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("400"));
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test
@@ -225,14 +225,14 @@ class SearchStudentIntegrationTests {
     void rejectsUnsupportedSortField() throws Exception {
         mvc.perform(get("/api/admin/students").param("sort", "user.password,asc"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("400"));
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test
     void rejectsOverlongFilterValues() throws Exception {
         mvc.perform(get("/api/admin/students").param("student", "fullName~" + "a".repeat(256)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("400"));
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     private void saveStudent(String code, String name, String birthDate, String phone,
