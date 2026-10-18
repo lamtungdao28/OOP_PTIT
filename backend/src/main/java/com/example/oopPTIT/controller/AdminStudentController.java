@@ -4,6 +4,9 @@ import com.example.oopPTIT.dto.request.CreateStudentRequest;
 import com.example.oopPTIT.dto.request.UpdateStudentRequest;
 import com.example.oopPTIT.dto.request.UpdateStudentStatusRequest;
 import com.example.oopPTIT.dto.response.StudentDetailResponse;
+import com.example.oopPTIT.dto.response.ResponsePage;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import jakarta.validation.Valid;
@@ -56,10 +59,10 @@ public class AdminStudentController {
     }
 
     @GetMapping
-    public ResponseData<List<StudentResponse>> searchStudents(
-            @RequestParam(name = "fullName", required = false) String fullName,
-            @RequestParam(name = "studentCode", required = false) String studentCode) {
+    public ResponseData<ResponsePage<List<StudentResponse>>> searchStudents(
+            @PageableDefault(size = 20, sort = "id") Pageable pageable,
+            @RequestParam(name = "student", required = false) String[] student) {
         return new ResponseData<>("200", "Students retrieved successfully",
-                studentService.searchStudents(fullName, studentCode));
+                studentService.advanceSearchWithSpecification(pageable, student));
     }
 }

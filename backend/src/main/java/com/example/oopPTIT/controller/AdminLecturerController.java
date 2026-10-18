@@ -4,9 +4,12 @@ import com.example.oopPTIT.dto.request.CreateLecturerRequest;
 import com.example.oopPTIT.dto.request.UpdateLecturerRequest;
 import com.example.oopPTIT.dto.response.LecturerResponse;
 import com.example.oopPTIT.dto.response.ResponseData;
+import com.example.oopPTIT.dto.response.ResponsePage;
 import com.example.oopPTIT.service.LecturerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,8 +22,16 @@ public class AdminLecturerController {
     private final LecturerService lecturerService;
 
     @GetMapping
-    public ResponseData<List<LecturerResponse>> getLecturers() {
-        return new ResponseData<>("200", "Lecturers retrieved successfully", lecturerService.getLecturers());
+    public ResponseData<ResponsePage<List<LecturerResponse>>> getLecturers(
+            @PageableDefault(size = 20, sort = "id") Pageable pageable,
+            @RequestParam(name = "lecturer", required = false) String[] lecturer) {
+        return new ResponseData<>("200", "Lecturers retrieved successfully",
+                lecturerService.advanceSearchWithSpecification(pageable, lecturer));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseData<LecturerResponse> getLecturer(@PathVariable("id") Long id) {
+        return new ResponseData<>("200", "Lecturer retrieved successfully", lecturerService.getLecturer(id));
     }
 
     @PostMapping

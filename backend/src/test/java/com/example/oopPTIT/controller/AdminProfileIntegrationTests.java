@@ -6,8 +6,11 @@ import com.example.oopPTIT.util.Role;
 import com.example.oopPTIT.util.Status;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -49,6 +52,7 @@ class AdminProfileIntegrationTests {
         lecturers.deleteAll();
         users.deleteAll();
         mvc = MockMvcBuilders.standaloneSetup(studentController, lecturerController)
+                .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .setControllerAdvice(new StudentExceptionHandler()).build();
     }
 
@@ -81,7 +85,8 @@ class AdminProfileIntegrationTests {
     @Test
     void createsListsAndUpdatesLecturerWithEncodedPassword() throws Exception {
         mvc.perform(get("/api/admin/lecturers")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").isEmpty());
+                .andExpect(jsonPath("$.data.totalPage").value(0))
+                .andExpect(jsonPath("$.data.items").isEmpty());
         mvc.perform(post("/api/admin/lecturers").contentType(MediaType.APPLICATION_JSON).content(LECTURER))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.data.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.data.password").doesNotExist());
@@ -93,9 +98,58 @@ class AdminProfileIntegrationTests {
                         .content("{\"department\":\" Updated Department \",\"email\":\"updated@example.com\",\"lecturerCode\":\"GV01\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.fullName").value("Lecturer One"));
         mvc.perform(get("/api/admin/lecturers")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].department").value("Updated Department"))
-                .andExpect(jsonPath("$.data[0].email").value("updated@example.com"));
+                .andExpect(jsonPath("$.data.items[0].department").value("Updated Department"))
+                .andExpect(jsonPath("$.data.items[0].email").value("updated@example.com"));
         assertThat(lecturers.findById(id).orElseThrow().getDepartment()).isEqualTo("Updated Department");
+    }
+
+    @Test
+    void readsRequestedLecturerByIdWithoutExposingPasswordOrRelationships() throws Exception {
+        mvc.perform(post("/api/admin/lecturers").contentType(MediaType.APPLICATION_JSON).content(LECTURER))
+                .andExpect(status().isCreated());
+        String second = """
+                {"username":"lecturer02","password":"DemoPassword123!","email":"second@example.com",
+                 "lecturerCode":"GV02","fullName":"Lecturer Two","department":"DTVT","phone":"0901234569"}
+                """;
+        mvc.perform(post("/api/admin/lecturers").contentType(MediaType.APPLICATION_JSON).content(second))
+                .andExpect(status().isCreated());
+        Long id = lecturers.findAll().stream()
+                .filter(lecturer -> lecturer.getLecturerCode().equals("GV02"))
+                .findFirst().orElseThrow().getId();
+
+        mvc.perform(get("/api/admin/lecturers/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("200"))
+                .andExpect(jsonPath("$.message").value("Lecturer retrieved successfully"))
+                .andExpect(jsonPath("$.data.id").value(id.intValue()))
+                .andExpect(jsonPath("$.data.lecturerCode").value("GV02"))
+                .andExpect(jsonPath("$.data.fullName").value("Lecturer Two"))
+                .andExpect(jsonPath("$.data.department").value("DTVT"))
+                .andExpect(jsonPath("$.data.phone").value("0901234569"))
+                .andExpect(jsonPath("$.data.username").value("lecturer02"))
+                .andExpect(jsonPath("$.data.email").value("second@example.com"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.password").doesNotExist())
+                .andExpect(jsonPath("$.data.user").doesNotExist())
+                .andExpect(jsonPath("$.data.courseClasses").doesNotExist());
+    }
+
+    @Test
+    void returnsNotFoundWhenLecturerIdDoesNotExist() throws Exception {
+        mvc.perform(get("/api/admin/lecturers/999999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value("404"))
+                .andExpect(jsonPath("$.message").value("Lecturer not found: 999999"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"invalid", "1.5", "9223372036854775808"})
+    void rejectsMalformedLecturerIds(String id) throws Exception {
+        mvc.perform(get("/api/admin/lecturers/{id}", id))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value("400"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test

@@ -2,10 +2,9 @@ package com.example.oopPTIT.repository;
 
 import com.example.oopPTIT.entity.Student;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-import java.util.List;
-
-public interface StudentRepository extends JpaRepository<Student, Long> {
+public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpecificationExecutor<Student> {
 
     boolean existsByStudentCodeIgnoreCaseAndIdNot(String studentCode, Long id);
 
@@ -15,8 +14,6 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
     boolean existsByPhone(String phone);
 
-    List<Student> findByFullNameContainingIgnoreCaseAndStudentCodeContainingIgnoreCaseOrderByIdAsc(
-            String fullName, String studentCode);
 }
 
 //mô tả bài toán -> ERD -> chuẩn hóa -> implement -> bảng đầy đủ

@@ -41,6 +41,11 @@ public class StudentExceptionHandler {
         return ResponseEntity.badRequest().body(new ResponseError("400", "Invalid request parameter"));
     }
 
+    @ExceptionHandler({InvalidStudentFilterException.class, InvalidLecturerFilterException.class})
+    public ResponseEntity<ResponseError> handleInvalidFilter(RuntimeException exception) {
+        return ResponseEntity.badRequest().body(new ResponseError("400", exception.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ResponseError> handleValidation(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()

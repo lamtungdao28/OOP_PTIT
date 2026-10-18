@@ -4,14 +4,19 @@ import com.example.oopPTIT.dto.request.CreateStudentRequest;
 import com.example.oopPTIT.dto.request.UpdateStudentRequest;
 import com.example.oopPTIT.dto.request.UpdateStudentStatusRequest;
 import com.example.oopPTIT.dto.response.StudentDetailResponse;
+import com.example.oopPTIT.dto.response.ResponsePage;
+import com.example.oopPTIT.exception.InvalidStudentFilterException;
 import com.example.oopPTIT.exception.ResourceNotFoundException;
 import com.example.oopPTIT.entity.Student;
 import com.example.oopPTIT.entity.User;
 import com.example.oopPTIT.exception.DuplicateStudentException;
 import com.example.oopPTIT.repository.UserRepository;
+import com.example.oopPTIT.repository.specification.StudentSpecificationBuilder;
 import com.example.oopPTIT.util.Role;
 import com.example.oopPTIT.util.Status;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import com.example.oopPTIT.dto.response.StudentResponse;
 import com.example.oopPTIT.repository.StudentRepository;
@@ -20,10 +25,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class StudentService {
+
+    private static final Set<String> SORT_FIELDS = Set.of("id", "studentCode", "fullName", "dateOfBirth", "phone");
 
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
@@ -75,18 +83,30 @@ public class StudentService {
     }
 
     @Transactional(readOnly = true)
-    public List<StudentResponse> searchStudents(String fullName, String studentCode) {
-        return studentRepository
-                .findByFullNameContainingIgnoreCaseAndStudentCodeContainingIgnoreCaseOrderByIdAsc(
-                        normalize(fullName), normalize(studentCode))
-                .stream()
-                .map(student -> new StudentResponse(
-                        student.getId(),
-                        student.getStudentCode(),
-                        student.getFullName(),
-                        student.getDateOfBirth(),
-                        student.getPhone()))
-                .toList();
+    public ResponsePage<List<StudentResponse>> advanceSearchWithSpecification(Pageable pageable, String[] student) {
+        pageable.getSort().forEach(order -> {
+            if (!SORT_FIELDS.contains(order.getProperty())) {
+                throw new InvalidStudentFilterException("Unsupported student sort field: " + order.getProperty());
+            }
+        });
+
+        StudentSpecificationBuilder builder = new StudentSpecificationBuilder();
+        if (student != null) {
+            for (String filter : student) {
+                builder.with(filter);
+            }
+        }
+
+        Page<StudentResponse> students = studentRepository.findAll(builder.build(), pageable)
+                .map(item -> new StudentResponse(item.getId(), item.getStudentCode(), item.getFullName(),
+                        item.getDateOfBirth(), item.getPhone()));
+
+        return ResponsePage.<List<StudentResponse>>builder()
+                .pageNo(students.getNumber())
+                .pageSize(students.getSize())
+                .totalPage(students.getTotalPages())
+                .items(students.getContent())
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -141,7 +161,4 @@ public class StudentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found: " + id));
     }
 
-    private String normalize(String value) {
-        return value == null ? "" : value.strip();
-    }
 }
