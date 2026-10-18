@@ -3,6 +3,7 @@ package com.example.oopPTIT.service;
 import com.example.oopPTIT.dto.request.CreateSubjectRequest;
 import com.example.oopPTIT.dto.request.UpdateSubjectRequest;
 import com.example.oopPTIT.dto.response.ResponsePage;
+import com.example.oopPTIT.dto.response.SubjectResponse;
 import com.example.oopPTIT.entity.Subject;
 import com.example.oopPTIT.repository.SubjectRepository;
 import com.example.oopPTIT.repository.specification.SubjectSpecificationBuilder;
@@ -71,7 +72,16 @@ public class SubjectService {
                 specification = filters;
             }
         }
-        Page<Subject> subjects = subjectRepository.findAll(specification, pageable);
+        Page<SubjectResponse> subjects = subjectRepository.findAll(specification, pageable)
+                .map(item -> SubjectResponse.builder()
+                        .id(item.getId())
+                        .subjectCode(item.getSubjectCode())
+                        .subjectName(item.getSubjectName())
+                        .credits(item.getCredits())
+                        .status(item.getStatus())
+                        .createdAt(item.getCreatedAt())
+                        .updatedAt(item.getUpdatedAt())
+                        .build());
         return ResponsePage.builder()
                 .pageNo(subjects.getNumber())
                 .pageSize(subjects.getSize())
