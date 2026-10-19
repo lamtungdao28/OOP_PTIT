@@ -9,9 +9,12 @@ variables. GET filters (including attendance `classId`) use query parameters.
 | --- | --- |
 | `POST /api/auth/login` | `LoginRequest` |
 | `POST /api/admin/students` | `CreateStudentRequest` |
+| `GET /api/admin/students` | `Pageable` and `String[] student` (query parameters) |
 | `PATCH /api/admin/students/{id}` | `UpdateStudentRequest` |
 | `PATCH /api/admin/students/{id}/status` | `UpdateStudentStatusRequest` |
 | `POST /api/admin/lecturers` | `CreateLecturerRequest` |
+| `GET /api/admin/lecturers` | `Pageable` and `String[] lecturer` (query parameters) |
+| `GET /api/admin/lecturers/{id}` | No body; lecturer ID in the path |
 | `PATCH /api/admin/lecturers/{id}` | `UpdateLecturerRequest` |
 | `POST /api/admin/subjects` | `CreateSubjectRequest` |
 | `PATCH /api/admin/subjects/{id}` | `UpdateSubjectRequest` |
@@ -35,6 +38,54 @@ an enrollment or the listed GET endpoints.
 For profile and subject PATCH requests, omitted or null fields mean unchanged;
 the service must skip them when applying updates. Blank supplied strings are
 invalid. Account credentials are accepted only on creation and login.
+
+Student search follows Subject's `Pageable` + SpecificationBuilder pattern.
+Repeat the optional `student` query parameter for multiple filters; they are
+combined with AND. Each filter uses `field` + `operator` + `value`. Supported
+fields are `id`, `fullName`, `studentCode`, `phone`, `dateOfBirth`, `username`,
+`email` and `status`. The last three fields belong to the linked User.
+
+Operators are `:` (equal), `!` (not equal), `>` (strictly greater/after), `<`
+(strictly less/before) and `~` (contains text). Text equality also supports
+`field:value*` (starts with), `field:*value` (ends with), and `field:*value*`
+(contains). Text matching is case-insensitive and trims outer whitespace; SQL
+LIKE metacharacters `%`, `_` and `!` are literal. Dates use `yyyy-MM-dd`, IDs
+are integers, and status accepts `ACTIVE`/`INACTIVE` with `:` or `!` only.
+Missing or blank filter parameters are ignored. Invalid fields, operators,
+values, or unsupported sort fields return HTTP 400.
+
+Pagination uses zero-based `page`, `size` (default 20), and `sort=field,asc|desc`
+(default `id,asc`). Sort fields are `id`, `studentCode`, `fullName`, `dateOfBirth`
+and `phone`. `data` is now a ResponsePage containing `pageNo`, `pageSize`,
+`totalPage` and `items` (StudentResponse objects, without account credentials).
+Clients must read `data.items` instead of `data` and migrate old named filters
+such as `fullName=Nguyen` to `student=fullName~Nguyen`.
+
+```http
+GET /api/admin/students?page=0&size=10&sort=studentCode,asc
+GET /api/admin/students?student=fullName~Nguyen&student=studentCode:B23*&student=status:ACTIVE
+GET /api/admin/students?student=dateOfBirth%3E2004-01-01&student=dateOfBirth%3C2007-01-01
+```
+
+Lecturer search uses the same pagination, operators, wildcard syntax, AND
+combination and validation as student search, with repeated `lecturer` query
+parameters. Supported fields are `id`, `lecturerCode`, `fullName`, `department`,
+`phone`, `username`, `email` and `status`; the last three belong to the linked
+User. Sort fields are `id`, `lecturerCode`, `fullName`, `department` and `phone`.
+The defaults are `page=0`, `size=20` and `sort=id,asc`. Its response now places
+LecturerResponse objects in `data.items` instead of the previous `data` array,
+alongside `pageNo`, `pageSize` and `totalPage`. Passwords and entity relationships
+are not included in the response.
+
+```http
+GET /api/admin/lecturers?page=0&size=10&sort=lecturerCode,asc
+GET /api/admin/lecturers?lecturer=fullName~Nguyen&lecturer=department:CNTT&lecturer=status:ACTIVE
+GET /api/admin/lecturers?lecturer=lecturerCode:GV*&lecturer=email~ptit.edu.vn
+```
+
+`GET /api/admin/lecturers/{id}` returns one LecturerResponse in `data`, including
+the linked account's username, email and status but never its password. A missing
+lecturer returns HTTP 404; an ID that cannot be parsed as a Long returns HTTP 400.
 
 Services must assign initial statuses, roles, session numbers, timestamps and
 attendance methods; encode passwords; and check uniqueness, resource ownership
