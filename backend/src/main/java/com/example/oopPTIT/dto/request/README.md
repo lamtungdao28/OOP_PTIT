@@ -98,6 +98,8 @@ Attendance and attendance session statuses also use this shared enum, replacing
 the original PRESENT/LATE/ABSENT and OPEN/CLOSED contract. Existing database rows
 with other status values must be migrated before loading them through these entities.
 
-`CreateCourseClassRequest.semesterId` follows the API contract, but CourseClass
-currently has no semester relationship. Add that mapping when implementing class
-creation. DTO validation does not implement persistence or business workflows.
+`POST /api/admin/classes` stores the semester through `CourseClass.semester`
+(`COURSE_CLASSES.SEMESTERSid`). The service checks that the subject, semester and
+lecturer exist, assigns `ACTIVE`, and returns the new class ID. Existing class rows
+must be assigned their actual semester before enforcing the non-null foreign key.
+DTO validation does not implement persistence or business workflows.

@@ -1,5 +1,8 @@
 package com.example.oopPTIT.controller;
 
+import com.example.oopPTIT.entity.CourseClass;
+import com.example.oopPTIT.entity.Semester;
+import com.example.oopPTIT.entity.SemesterHasSubject;
 import com.example.oopPTIT.entity.Subject;
 import com.example.oopPTIT.repository.SubjectRepository;
 import com.example.oopPTIT.service.SubjectService;
@@ -54,6 +57,32 @@ class AdminSubjectControllerTests {
         subject.setSubjectName("Object Oriented Programming");
         subject.setCredits(3);
         subject.setStatus(Status.ACTIVE);
+    }
+
+    @Test
+    void listsSubjectsWithoutSerializingLinkedClassesAndSemesters() throws Exception {
+        CourseClass courseClass = new CourseClass();
+        courseClass.setSubject(subject);
+        subject.getCourseClasses().add(courseClass);
+        Semester semester = new Semester();
+        SemesterHasSubject link = new SemesterHasSubject();
+        link.setSubject(subject);
+        link.setSemester(semester);
+        semester.getSemesterHasSubjects().add(link);
+        subject.getSemesterHasSubjects().add(link);
+        var pageable = PageRequest.of(0, 20);
+        when(subjectRepository.findAll(ArgumentMatchers.<Specification<Subject>>notNull(), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(subject), pageable, 1));
+
+        mockMvc.perform(get("/api/admin/subjects"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].id").value(7))
+                .andExpect(jsonPath("$.data.items[0].subjectCode").value("INT2204"))
+                .andExpect(jsonPath("$.data.items[0].subjectName").value("Object Oriented Programming"))
+                .andExpect(jsonPath("$.data.items[0].credits").value(3))
+                .andExpect(jsonPath("$.data.items[0].status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.items[0].courseClasses").doesNotExist())
+                .andExpect(jsonPath("$.data.items[0].semesterHasSubjects").doesNotExist());
     }
 
     @Test
