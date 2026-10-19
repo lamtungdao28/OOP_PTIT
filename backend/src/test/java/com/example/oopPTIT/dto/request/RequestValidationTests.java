@@ -84,15 +84,27 @@ class RequestValidationTests {
     }
 
     @Test
+    void acceptsOmittedAndNullFieldsInLecturerUpdates() {
+        var lecturer = JSON.readValue("""
+                {"department":"CNTT","email":null}
+                """, UpdateLecturerRequest.class);
+
+        assertThat(validator.validate(lecturer)).isEmpty();
+    }
+
+    @Test
     void rejectsBlankValuesSuppliedInPartialUpdates() {
         for (var blank : List.of("", " ", "\n\t")) {
             var subject = new UpdateSubjectRequest();
             subject.setSubjectName(blank);
             var student = new UpdateStudentRequest();
             student.setFullName(blank);
+            var lecturer = new UpdateLecturerRequest();
+            lecturer.setFullName(blank);
 
             assertInvalid(subject, "subjectName");
             assertInvalid(student, "fullName");
+            assertInvalid(lecturer, "fullName");
         }
     }
 

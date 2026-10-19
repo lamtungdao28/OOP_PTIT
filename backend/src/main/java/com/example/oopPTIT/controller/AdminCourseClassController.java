@@ -1,5 +1,6 @@
 package com.example.oopPTIT.controller;
 
+import com.example.oopPTIT.dto.request.AssignLecturerRequest;
 import com.example.oopPTIT.dto.request.CreateCourseClassRequest;
 import com.example.oopPTIT.dto.response.CourseClassResponse;
 import com.example.oopPTIT.dto.response.ResponseData;
@@ -11,13 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
@@ -50,5 +45,12 @@ public class AdminCourseClassController {
     public ResponseData<CourseClassResponse> getCourseClassById(@PathVariable Long id) {
         return new ResponseData<>(HttpStatus.ACCEPTED.value(), "Get course class detail",
                 courseClassService.getCourseClassById(id));
+    }
+
+    @PatchMapping("/{id}/lecturer")
+    public ResponseData<CourseClassResponse> assignLecturer(@PathVariable("id") Long id,
+            @RequestBody @Valid AssignLecturerRequest request) {
+        return new ResponseData<>(HttpStatus.OK.value(), "Course class lecturer updated successfully",
+                courseClassService.assignLecturer(id, request));
     }
 }

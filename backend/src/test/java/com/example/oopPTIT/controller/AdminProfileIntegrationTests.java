@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.url=jdbc:h2:mem:admin-profiles;MODE=MySQL;DB_CLOSE_DELAY=-1",
         "spring.datasource.driver-class-name=org.h2.Driver", "spring.datasource.username=sa",
         "spring.datasource.password=", "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.jpa.show-sql=false", "spring.sql.init.mode=never"
+        "spring.jpa.show-sql=false", "spring.jpa.open-in-view=false", "spring.sql.init.mode=never"
 })
 class AdminProfileIntegrationTests {
     @Autowired private AdminStudentController studentController;
@@ -101,6 +101,31 @@ class AdminProfileIntegrationTests {
                 .andExpect(jsonPath("$.data.items[0].department").value("Updated Department"))
                 .andExpect(jsonPath("$.data.items[0].email").value("updated@example.com"));
         assertThat(lecturers.findById(id).orElseThrow().getDepartment()).isEqualTo("Updated Department");
+    }
+
+    @Test
+    void keepsNullFieldsUnchangedWhenUpdatingLecturer() throws Exception {
+        mvc.perform(post("/api/admin/lecturers").contentType(MediaType.APPLICATION_JSON).content(LECTURER))
+                .andExpect(status().isCreated());
+        Long id = lecturers.findAll().getFirst().getId();
+
+        mvc.perform(patch("/api/admin/lecturers/{id}", id).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"department":"DTVT","lecturerCode":null,"fullName":null,"phone":null,"email":null}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.department").value("DTVT"))
+                .andExpect(jsonPath("$.data.lecturerCode").value("GV01"))
+                .andExpect(jsonPath("$.data.fullName").value("Lecturer One"))
+                .andExpect(jsonPath("$.data.phone").value("0901234568"))
+                .andExpect(jsonPath("$.data.email").value("lecturer@example.com"));
+
+        var lecturer = lecturers.findById(id).orElseThrow();
+        assertThat(lecturer.getDepartment()).isEqualTo("DTVT");
+        assertThat(lecturer.getLecturerCode()).isEqualTo("GV01");
+        assertThat(lecturer.getFullName()).isEqualTo("Lecturer One");
+        assertThat(lecturer.getPhone()).isEqualTo("0901234568");
+        assertThat(users.findAll().getFirst().getEmail()).isEqualTo("lecturer@example.com");
     }
 
     @Test

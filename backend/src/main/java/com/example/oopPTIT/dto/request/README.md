@@ -87,6 +87,21 @@ GET /api/admin/lecturers?lecturer=lecturerCode:GV*&lecturer=email~ptit.edu.vn
 the linked account's username, email and status but never its password. A missing
 lecturer returns HTTP 404; an ID that cannot be parsed as a Long returns HTTP 400.
 
+`PATCH /api/admin/classes/{id}/lecturer` assigns or replaces a class's lecturer.
+The body requires a positive `lecturerId`; the class and lecturer must both exist.
+Success returns HTTP 200 with the updated CourseClassResponse in `data`, including
+`lecturerId` and `updatedAt`. Other class fields remain unchanged. Assigning the
+same lecturer again is allowed. Missing references return HTTP 404; missing,
+null, non-positive or malformed lecturer IDs return HTTP 400. This endpoint
+does not remove the lecturer assignment.
+
+```http
+PATCH /api/admin/classes/12/lecturer
+Content-Type: application/json
+
+{"lecturerId": 52}
+```
+
 Services must assign initial statuses, roles, session numbers, timestamps and
 attendance methods; encode passwords; and check uniqueness, resource ownership
 and referenced records. Student status belongs to its linked User. All entity

@@ -41,10 +41,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -99,6 +101,93 @@ class AdminCourseClassControllerTests {
         courseClass.setUpdatedAt(courseClass.getCreatedAt());
         subject.getCourseClasses().add(courseClass);
         lecturer.getCourseClasses().add(courseClass);
+    }
+
+    @Test
+    void changesLecturerWithoutChangingOtherClassFields() throws Exception {
+        Lecturer replacement = new Lecturer();
+        replacement.setId(52L);
+        when(courseClassRepository.findById(12L)).thenReturn(Optional.of(courseClass));
+        when(lecturerRepository.findById(52L)).thenReturn(Optional.of(replacement));
+        when(courseClassRepository.saveAndFlush(courseClass)).thenReturn(courseClass);
+
+        mockMvc.perform(patch("/api/admin/classes/12/lecturer").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecturerId\":52}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Course class lecturer updated successfully"))
+                .andExpect(jsonPath("$.data.id").value(12))
+                .andExpect(jsonPath("$.data.lecturerId").value(52))
+                .andExpect(jsonPath("$.data.classCode").value("INT2204-01"))
+                .andExpect(jsonPath("$.data.maxStudents").value(50))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.subjectId").value(10))
+                .andExpect(jsonPath("$.data.semesterId").value(5))
+                .andExpect(jsonPath("$.data.createdAt").isNotEmpty())
+                .andExpect(jsonPath("$.data.updatedAt").isNotEmpty())
+                .andExpect(jsonPath("$.data.lecturer").doesNotExist())
+                .andExpect(jsonPath("$.data.subject").doesNotExist())
+                .andExpect(jsonPath("$.data.semester").doesNotExist())
+                .andExpect(jsonPath("$.data.classSessions").doesNotExist())
+                .andExpect(jsonPath("$.data.studentHasCourseClasses").doesNotExist());
+
+        assertThat(courseClass.getLecturer()).isSameAs(replacement);
+        verify(courseClassRepository).saveAndFlush(courseClass);
+        verifyNoInteractions(subjectRepository, semesterRepository);
+    }
+
+    @Test
+    void allowsAssigningTheCurrentLecturerAgain() throws Exception {
+        when(courseClassRepository.findById(12L)).thenReturn(Optional.of(courseClass));
+        when(courseClassRepository.saveAndFlush(courseClass)).thenReturn(courseClass);
+
+        mockMvc.perform(patch("/api/admin/classes/12/lecturer").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecturerId\":51}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.lecturerId").value(51));
+
+        assertThat(courseClass.getLecturer()).isSameAs(lecturer);
+    }
+
+    @Test
+    void rejectsAssignmentWhenClassDoesNotExist() throws Exception {
+        mockMvc.perform(patch("/api/admin/classes/99/lecturer").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecturerId\":51}"))
+                .andExpect(status().isNotFound());
+
+        verify(courseClassRepository, never()).saveAndFlush(any(CourseClass.class));
+        verifyNoInteractions(lecturerRepository, subjectRepository, semesterRepository);
+    }
+
+    @Test
+    void rejectsAssignmentWhenLecturerDoesNotExistWithoutChangingClass() throws Exception {
+        when(courseClassRepository.findById(12L)).thenReturn(Optional.of(courseClass));
+
+        mockMvc.perform(patch("/api/admin/classes/12/lecturer").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecturerId\":99}"))
+                .andExpect(status().isNotFound());
+
+        assertThat(courseClass.getLecturer()).isSameAs(lecturer);
+        verify(courseClassRepository, never()).saveAndFlush(any(CourseClass.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "{}", "null", "{\"lecturerId\":null}", "{\"lecturerId\":0}",
+            "{\"lecturerId\":-1}", "{\"lecturerId\":\"invalid\"}", "{\"lecturerId\":"})
+    void rejectsInvalidAssignmentBodiesBeforeAccessingRepositories(String body) throws Exception {
+        mockMvc.perform(patch("/api/admin/classes/12/lecturer").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(courseClassRepository, lecturerRepository, subjectRepository, semesterRepository);
+    }
+
+    @Test
+    void rejectsNonNumericAssignmentClassIdBeforeAccessingRepositories() throws Exception {
+        mockMvc.perform(patch("/api/admin/classes/invalid/lecturer").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lecturerId\":51}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(courseClassRepository, lecturerRepository, subjectRepository, semesterRepository);
     }
 
     @Test

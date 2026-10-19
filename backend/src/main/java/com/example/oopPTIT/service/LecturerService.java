@@ -33,7 +33,6 @@ public class LecturerService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Transactional(readOnly = true)
     public ResponsePage<List<LecturerResponse>> advanceSearchWithSpecification(Pageable pageable, String[] lecturer) {
         pageable.getSort().forEach(order -> {
             if (!SORT_FIELDS.contains(order.getProperty())) {

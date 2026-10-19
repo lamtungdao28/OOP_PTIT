@@ -35,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.password=",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.show-sql=false",
+        "spring.jpa.open-in-view=false",
         "spring.sql.init.mode=never"
 })
 class SearchLecturerIntegrationTests {

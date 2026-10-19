@@ -1,5 +1,6 @@
 package com.example.oopPTIT.service;
 
+import com.example.oopPTIT.dto.request.AssignLecturerRequest;
 import com.example.oopPTIT.dto.request.CreateCourseClassRequest;
 import com.example.oopPTIT.dto.response.CourseClassResponse;
 import com.example.oopPTIT.dto.response.ResponsePage;
@@ -63,6 +64,19 @@ public class CourseClassService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Course class not found: " + id));
         return toResponse(courseClass);
+    }
+
+    @Transactional
+    public CourseClassResponse assignLecturer(Long id, AssignLecturerRequest request) {
+        CourseClass courseClass = courseClassRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Course class not found: " + id));
+        Lecturer lecturer = lecturerRepository.findById(request.getLecturerId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Lecturer not found: " + request.getLecturerId()));
+
+        courseClass.setLecturer(lecturer);
+        return toResponse(courseClassRepository.saveAndFlush(courseClass));
     }
 
     @Transactional(readOnly = true)
