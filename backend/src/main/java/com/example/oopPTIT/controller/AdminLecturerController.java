@@ -1,5 +1,7 @@
 package com.example.oopPTIT.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.example.oopPTIT.dto.request.CreateLecturerRequest;
 import com.example.oopPTIT.dto.request.UpdateLecturerRequest;
 import com.example.oopPTIT.dto.response.LecturerResponse;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
+@PreAuthorize("hasRole('ADMIN')")
 @RequestMapping("/api/admin/lecturers")
 @RequiredArgsConstructor
 public class AdminLecturerController {

@@ -1,5 +1,7 @@
 package com.example.oopPTIT.service;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.example.oopPTIT.dto.request.CreateLecturerRequest;
 import com.example.oopPTIT.dto.request.UpdateLecturerRequest;
 import com.example.oopPTIT.dto.response.LecturerResponse;
@@ -25,6 +27,7 @@ import java.util.List;
 import java.util.Set;
 
 @Service
+@PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 public class LecturerService {
     private static final Set<String> SORT_FIELDS = Set.of("id", "lecturerCode", "fullName", "department", "phone");
@@ -68,10 +71,10 @@ public class LecturerService {
         String username = request.getUsername().strip();
         String email = request.getEmail().strip();
         String code = request.getLecturerCode().strip();
-        if (userRepository.existsByUsernameIgnoreCase(username)) {
+        if (userRepository.existsByUsernameIgnoreCase(username) || userRepository.existsByEmailIgnoreCase(username)) {
             throw new DuplicateLecturerException("Username already exists");
         }
-        if (userRepository.existsByEmailIgnoreCase(email)) {
+        if (userRepository.existsByEmailIgnoreCase(email) || userRepository.existsByUsernameIgnoreCase(email)) {
             throw new DuplicateLecturerException("Email already exists");
         }
         if (lecturerRepository.existsByLecturerCodeIgnoreCase(code)) {
@@ -112,7 +115,8 @@ public class LecturerService {
         }
         if (request.getEmail() != null) {
             String email = request.getEmail().strip();
-            if (userRepository.existsByEmailIgnoreCaseAndIdNot(email, user.getId())) {
+            if (userRepository.existsByEmailIgnoreCaseAndIdNot(email, user.getId())
+                    || userRepository.existsByUsernameIgnoreCaseAndIdNot(email, user.getId())) {
                 throw new DuplicateLecturerException("Email already exists");
             }
             user.setEmail(email);

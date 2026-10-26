@@ -132,31 +132,44 @@ class RequestValidationTests {
             var json = """
                     {"status":"%s"}
                     """.formatted(status);
-            var manualJson = """
-                    {"studentId":1,"status":"%s"}
-                    """.formatted(status);
-
             for (var request : List.of(
                     JSON.readValue(json, UpdateSubjectRequest.class),
-                    JSON.readValue(json, UpdateStudentStatusRequest.class),
-                    JSON.readValue(json, UpdateAttendanceRequest.class),
-                    JSON.readValue(manualJson, ManualAttendanceRequest.class))) {
+                    JSON.readValue(json, UpdateStudentStatusRequest.class))) {
                 assertThat(validator.validate(request)).isEmpty();
             }
         }
     }
 
     @Test
-    void rejectsUnknownAndPreviousAttendanceStatusesFromJson() {
+    void rejectsInvalidAccountStatusesFromJson() {
         for (var status : List.of("UNKNOWN", "PRESENT", "LATE", "ABSENT", "active")) {
             var json = """
                     {"status":"%s"}
                     """.formatted(status);
 
-            for (var requestType : List.of(UpdateSubjectRequest.class, UpdateStudentStatusRequest.class,
-                    UpdateAttendanceRequest.class, ManualAttendanceRequest.class)) {
+            for (var requestType : List.of(UpdateSubjectRequest.class, UpdateStudentStatusRequest.class)) {
                 assertThatThrownBy(() -> JSON.readValue(json, requestType))
                         .isInstanceOf(InvalidFormatException.class);
+            }
+        }
+    }
+
+    @Test
+    void acceptsAttendanceStatusesFromJson() {
+        for (var status : List.of("PRESENT", "LATE", "ABSENT")) {
+            var json = "{\"status\":\"%s\"}".formatted(status);
+            var manualJson = "{\"studentId\":1,\"status\":\"%s\"}".formatted(status);
+            assertThat(validator.validate(JSON.readValue(json, UpdateAttendanceRequest.class))).isEmpty();
+            assertThat(validator.validate(JSON.readValue(manualJson, ManualAttendanceRequest.class))).isEmpty();
+        }
+    }
+
+    @Test
+    void rejectsAccountAndUnknownStatusesForAttendance() {
+        for (var status : List.of("ACTIVE", "INACTIVE", "UNKNOWN", "present")) {
+            var json = "{\"status\":\"%s\"}".formatted(status);
+            for (var requestType : List.of(UpdateAttendanceRequest.class, ManualAttendanceRequest.class)) {
+                assertThatThrownBy(() -> JSON.readValue(json, requestType)).isInstanceOf(InvalidFormatException.class);
             }
         }
     }

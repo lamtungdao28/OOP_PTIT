@@ -1,5 +1,8 @@
 package com.example.oopPTIT.controller;
 
+import com.example.oopPTIT.SecurityTestSupport;
+import org.springframework.security.test.context.support.WithMockUser;
+
 import com.example.oopPTIT.entity.Lecturer;
 import com.example.oopPTIT.entity.User;
 import com.example.oopPTIT.exception.StudentExceptionHandler;
@@ -38,7 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.jpa.open-in-view=false",
         "spring.sql.init.mode=never"
 })
-class SearchLecturerIntegrationTests {
+@WithMockUser(roles = "ADMIN")
+class SearchLecturerIntegrationTests extends SecurityTestSupport {
     @Autowired private AdminLecturerController controller;
     @Autowired private LecturerRepository lecturers;
     @Autowired private UserRepository users;

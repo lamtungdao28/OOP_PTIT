@@ -7,6 +7,8 @@ import com.example.oopPTIT.entity.Subject;
 import com.example.oopPTIT.repository.CourseClassRepository;
 import com.example.oopPTIT.repository.LecturerRepository;
 import com.example.oopPTIT.repository.SemesterRepository;
+import com.example.oopPTIT.repository.StudentHasCourseClassRepository;
+import com.example.oopPTIT.repository.StudentRepository;
 import com.example.oopPTIT.repository.SubjectRepository;
 import com.example.oopPTIT.service.CourseClassService;
 import com.example.oopPTIT.util.Status;
@@ -33,6 +35,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
+import com.example.oopPTIT.security.CurrentUser;
+import com.example.oopPTIT.exception.StudentExceptionHandler;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,6 +49,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -61,6 +66,8 @@ class AdminCourseClassControllerTests {
     private SubjectRepository subjectRepository;
     private SemesterRepository semesterRepository;
     private LecturerRepository lecturerRepository;
+    private StudentHasCourseClassRepository studentHasCourseClassRepository;
+    private StudentRepository studentRepository;
     private MockMvc mockMvc;
     private Subject subject;
     private Semester semester;
@@ -73,9 +80,12 @@ class AdminCourseClassControllerTests {
         subjectRepository = mock(SubjectRepository.class);
         semesterRepository = mock(SemesterRepository.class);
         lecturerRepository = mock(LecturerRepository.class);
+        studentHasCourseClassRepository = mock(StudentHasCourseClassRepository.class);
+        studentRepository = mock(StudentRepository.class);
         var service = new CourseClassService(courseClassRepository, subjectRepository,
-                semesterRepository, lecturerRepository);
+                semesterRepository, lecturerRepository, studentHasCourseClassRepository, studentRepository, mock(CurrentUser.class));
         mockMvc = MockMvcBuilders.standaloneSetup(new AdminCourseClassController(service))
+                .setControllerAdvice(new StudentExceptionHandler())
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .build();
 
@@ -101,6 +111,73 @@ class AdminCourseClassControllerTests {
         courseClass.setUpdatedAt(courseClass.getCreatedAt());
         subject.getCourseClasses().add(courseClass);
         lecturer.getCourseClasses().add(courseClass);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {1, 2})
+    void removesStudentFromRequestedClass(long deletedCount) throws Exception {
+        when(courseClassRepository.existsById(12L)).thenReturn(true);
+        when(studentRepository.existsById(34L)).thenReturn(true);
+        when(studentHasCourseClassRepository.deleteByCourseClass_IdAndStudent_Id(12L, 34L))
+                .thenReturn(deletedCount);
+
+        mockMvc.perform(delete("/api/admin/classes/12/enrollments/34"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Student removed from course class successfully"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(studentHasCourseClassRepository).deleteByCourseClass_IdAndStudent_Id(12L, 34L);
+        verify(studentRepository, never()).deleteById(any());
+        verify(courseClassRepository, never()).deleteById(any());
+        verifyNoInteractions(lecturerRepository, subjectRepository, semesterRepository);
+    }
+
+    @Test
+    void rejectsWithdrawalWhenClassDoesNotExist() throws Exception {
+        mockMvc.perform(delete("/api/admin/classes/999999/enrollments/34"))
+                .andExpect(status().isNotFound());
+
+        verifyNoInteractions(studentRepository, studentHasCourseClassRepository);
+    }
+
+    @Test
+    void rejectsWithdrawalWhenStudentDoesNotExist() throws Exception {
+        when(courseClassRepository.existsById(12L)).thenReturn(true);
+
+        mockMvc.perform(delete("/api/admin/classes/12/enrollments/999999"))
+                .andExpect(status().isNotFound());
+
+        verifyNoInteractions(studentHasCourseClassRepository);
+    }
+
+    @Test
+    void rejectsWithdrawalWhenStudentIsNotEnrolled() throws Exception {
+        when(courseClassRepository.existsById(12L)).thenReturn(true);
+        when(studentRepository.existsById(34L)).thenReturn(true);
+
+        mockMvc.perform(delete("/api/admin/classes/12/enrollments/34"))
+                .andExpect(status().isNotFound());
+
+        verify(studentHasCourseClassRepository).deleteByCourseClass_IdAndStudent_Id(12L, 34L);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"invalid", "1.5", "9223372036854775808"})
+    void rejectsMalformedWithdrawalClassIds(String id) throws Exception {
+        mockMvc.perform(delete("/api/admin/classes/{id}/enrollments/34", id))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(courseClassRepository, studentRepository, studentHasCourseClassRepository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"invalid", "1.5", "9223372036854775808"})
+    void rejectsMalformedWithdrawalStudentIds(String studentId) throws Exception {
+        mockMvc.perform(delete("/api/admin/classes/12/enrollments/{studentId}", studentId))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(courseClassRepository, studentRepository, studentHasCourseClassRepository);
     }
 
     @Test
@@ -446,9 +523,9 @@ class AdminCourseClassControllerTests {
 
         mockMvc.perform(post("/api/admin/classes").contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_REQUEST))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.message").value("error to add new course class"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.message").value("An unexpected error occurred"))
                 .andExpect(jsonPath("$.data").doesNotExist());
     }
 }
