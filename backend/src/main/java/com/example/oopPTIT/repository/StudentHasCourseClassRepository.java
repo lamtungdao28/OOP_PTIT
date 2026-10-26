@@ -5,6 +5,8 @@ import com.example.oopPTIT.entity.Student;
 import com.example.oopPTIT.util.Status;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -12,6 +14,11 @@ import java.util.List;
 @Repository
 public interface StudentHasCourseClassRepository extends JpaRepository<StudentHasCourseClass, Long> {
     boolean existsByCourseClass_IdAndStudent_IdAndStatus(Long classId, Long studentId, Status status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from StudentHasCourseClass e where e.courseClass.id = :classId "
+            + "and e.student.id = :studentId and e.status = :status")
+    List<StudentHasCourseClass> findActiveForUpdate(Long classId, Long studentId, Status status);
     long deleteByCourseClass_IdAndStudent_Id(Long courseClassId, Long studentId);
 
     @Query("""

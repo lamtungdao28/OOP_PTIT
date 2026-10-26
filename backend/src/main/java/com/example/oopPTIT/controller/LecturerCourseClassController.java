@@ -11,6 +11,7 @@ import com.example.oopPTIT.dto.response.ClassSessionResponse;
 import com.example.oopPTIT.dto.response.ResponseData;
 import com.example.oopPTIT.dto.response.ResponsePage;
 import com.example.oopPTIT.service.AttendanceService;
+import com.example.oopPTIT.service.FaceAttendanceService;
 import com.example.oopPTIT.service.ClassSessionService;
 import com.example.oopPTIT.service.CourseClassService;
 import jakarta.validation.Valid;
@@ -19,8 +20,10 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -31,6 +34,7 @@ import java.util.List;
 public class LecturerCourseClassController {
     private final CourseClassService courseClassService;
     private final AttendanceService attendanceService;
+    private final FaceAttendanceService faceAttendanceService;
     private final ClassSessionService classSessionService;
 
     @GetMapping("/lecturer/classes")
@@ -68,6 +72,14 @@ public class LecturerCourseClassController {
             @Valid @RequestBody ManualAttendanceRequest request) {
         return ResponseEntity.status(201).body(new ResponseData<>(201, "Attendance recorded successfully",
                 attendanceService.recordManualAttendance(id, request)));
+    }
+
+    @PostMapping(value = "/sessions/{id}/attendance/recognize", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('LECTURER')")
+    public ResponseEntity<ResponseData<AttendanceResponse>> recognizeAttendance(@PathVariable("id") Long id,
+            @RequestPart("image") MultipartFile image) {
+        return ResponseEntity.status(201).body(new ResponseData<>(201, "Face attendance recorded successfully",
+                faceAttendanceService.recognize(id, image)));
     }
 
     @PatchMapping("/attendance/{id}")

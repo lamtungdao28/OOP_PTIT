@@ -31,20 +31,24 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class AttendanceService {
     private static final int MANUAL_METHOD = 1;
+    private static final int FACE_METHOD = 2;
     private final AttendanceRepository attendanceRepository;
     private final AttendanceSessionRepository sessionRepository;
     private final ClassSessionRepository classSessionRepository;
     private final CourseClassRepository courseClassRepository;
     private final StudentRepository studentRepository;
     private final StudentHasCourseClassRepository enrollmentRepository;
+    private final FaceProfileRepository faceProfileRepository;
     private final CourseAccess courseAccess;
     private final CurrentUser currentUser;
 
@@ -86,6 +90,44 @@ public class AttendanceService {
         lockAndRequireAssignedLecturer(classSession.getCourseClass().getId());
         var session = getSessionForClassSession(classSessionId);
         return createManualAttendance(session, request.getStudentId(), request.getStatus());
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @PreAuthorize("hasRole('LECTURER')")
+    public AttendanceResponse recordFaceAttendance(Long classSessionId, Long studentId, BigDecimal confidence,
+                                                    String modelName, byte[] expectedEmbedding) {
+        if (studentId == null || confidence == null || confidence.signum() < 0
+                || confidence.compareTo(BigDecimal.ONE) > 0 || expectedEmbedding == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid face recognition result");
+        }
+        var classSession = getClassSession(classSessionId);
+        Long classId = classSession.getCourseClass().getId();
+        lockAndRequireAssignedLecturer(classId);
+        var session = getSessionForClassSession(classSessionId);
+        LocalDateTime now = LocalDateTime.now();
+        if (!isOpenAt(session, now)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Attendance session is closed");
+        }
+        if (enrollmentRepository.findActiveForUpdate(classId, studentId, Status.ACTIVE).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Student is not enrolled in this class");
+        }
+        if (attendanceRepository.existsByAttendanceSession_IdAndStudent_Id(session.getId(), studentId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Attendance already recorded for this student and session");
+        }
+        var profile = faceProfileRepository.findByStudentIdForUpdate(studentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Face profile is no longer active"));
+        if (profile.getStatus() != Status.ACTIVE || profile.getStudent().getUser().getStatus() != Status.ACTIVE
+                || !Objects.equals(modelName, profile.getModelName())
+                || !Arrays.equals(expectedEmbedding, profile.getEmbedding())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Face profile changed during recognition");
+        }
+        int lateAfter = session.getLateAfterMinutes() == null ? 0 : session.getLateAfterMinutes();
+        TimeStatus status = now.isAfter(session.getOpenedAt().plusMinutes(lateAfter))
+                ? TimeStatus.LATE : TimeStatus.PRESENT;
+        Attendance attendance = newAttendance(session, profile.getStudent(), status, now);
+        attendance.setMethod(FACE_METHOD);
+        attendance.setConfidence(confidence);
+        return AttendanceResponse.from(attendanceRepository.saveAndFlush(attendance));
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)

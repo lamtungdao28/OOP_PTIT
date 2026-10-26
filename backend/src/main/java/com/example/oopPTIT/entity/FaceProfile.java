@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -26,6 +27,7 @@ public class FaceProfile extends AbtractEntity<Long> {
     @JoinColumn(name = "STUDENTSid", nullable = false, unique = true)
     private Student student;
 
+    @Lob
     @Column(name = "embedding", nullable = false)
     private byte[] embedding;
 

@@ -1,5 +1,9 @@
 # JWT Authentication and Authorization
 
+This document records the JWT and manual-attendance implementation. For the
+current face-recognition integration and setup, start with the repository root
+README and `face-service/README.md`.
+
 ## 1. Existing Architecture and Assumptions
 
 The application uses Java 21, Spring Boot 4.1.1, Spring MVC, Spring Data JPA and
@@ -309,7 +313,9 @@ Defaults are page 0, size 20, sort `student.studentCode,asc`. Supported sort fie
 are `id`, `student.id`, `student.studentCode`, `student.fullName`, `status`,
 `recognizedAt`, `method`, `createdAt`, `updatedAt`; all other fields return 400.
 The results scope always comes from the path and authenticated lecturer.
-`POST /api/sessions/{id}/attendance/recognize` is intentionally not implemented.
+This document describes the earlier JWT/manual-attendance scope. The face
+recognition endpoint has since been implemented with multipart image input; see
+the repository root README and `face-service/README.md` for its current flow.
 
 ### Login and Legacy Manual Recording
 

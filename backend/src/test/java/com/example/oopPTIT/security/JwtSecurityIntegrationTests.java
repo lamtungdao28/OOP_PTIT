@@ -1011,10 +1011,10 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
     }
 
     @Test
-    void recognitionEndpointRemainsUnimplemented() throws Exception {
-        mvc.perform(post("/api/sessions/{id}/attendance/recognize", ownedSession.getClassSession().getId())
+    void recognitionEndpointRequiresMultipartImage() throws Exception {
+        mvc.perform(multipart("/api/sessions/{id}/attendance/recognize", ownedSession.getClassSession().getId())
                         .header("Authorization", "Bearer " + login("lecturer", PASSWORD)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest());
         assertThat(attendances.count()).isZero();
     }
 

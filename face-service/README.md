@@ -15,6 +15,10 @@ $env:AI_SERVICE_TOKEN = "choose-a-long-random-secret"
 
 Spring Boot should use the same `AI_SERVICE_TOKEN` and call the two face endpoints with `X-AI-Service-Token`. Keep port 8000 private. The downloaded ONNX models are excluded from Git; run `download_models.py` on each installation. They come from [OpenCV Zoo](https://github.com/opencv/opencv_zoo). Set `FACE_MODEL_DIR` to override the model directory.
 
+The Spring Boot face-profile endpoints are `GET`, `POST`, and `PUT /api/students/me/face-profile`. Configure `AI_SERVICE_URL` and the same `AI_SERVICE_TOKEN` in `backend/.env.local`. For an existing MySQL database, run `backend/src/main/resources/db/face-profile-migration.sql` once before starting Spring Boot with schema validation.
+
+For lecturer face attendance, open a class attendance session first, then send `POST /api/sessions/{classSessionId}/attendance/recognize` to Spring Boot with a lecturer JWT and a multipart `image` field. Spring Boot sends only active enrolled students' active SFace profiles to `/face/recognize`. A confident match creates one attendance record with `method: 2` (FACE) and a backend-calculated `PRESENT` or `LATE` status. No match returns 422; a duplicate or closed session returns 409. Spring Boot rechecks the class assignment, enrollment, session state, and profile after AI responds.
+
 ## API contract
 
 `GET /health` returns `{"status":"ok","modelName":"SFace-2021dec"}` when both models load; otherwise it returns 503.
