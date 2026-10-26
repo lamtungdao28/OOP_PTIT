@@ -1,5 +1,8 @@
 package com.example.oopPTIT.controller;
 
+import com.example.oopPTIT.SecurityTestSupport;
+import org.springframework.security.test.context.support.WithMockUser;
+
 import com.example.oopPTIT.exception.StudentExceptionHandler;
 import com.example.oopPTIT.repository.*;
 import com.example.oopPTIT.util.Role;
@@ -27,7 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.password=", "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.show-sql=false", "spring.jpa.open-in-view=false", "spring.sql.init.mode=never"
 })
-class AdminProfileIntegrationTests {
+@WithMockUser(roles = "ADMIN")
+class AdminProfileIntegrationTests extends SecurityTestSupport {
     @Autowired private AdminStudentController studentController;
     @Autowired private AdminLecturerController lecturerController;
     @Autowired private StudentRepository students;

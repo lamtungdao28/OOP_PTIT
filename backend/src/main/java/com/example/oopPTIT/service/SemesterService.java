@@ -1,5 +1,7 @@
 package com.example.oopPTIT.service;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.example.oopPTIT.dto.request.CreateSemesterRequest;
 import com.example.oopPTIT.dto.response.ResponsePage;
 import com.example.oopPTIT.dto.response.SemesterResponse;
@@ -16,6 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
+@PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 public class SemesterService {
     private static final Pattern SEARCH_PATTERN = Pattern.compile("(\\w+?)([<:>~!])(.*)(\\p{Punct}?)(\\p{Punct}?)");
