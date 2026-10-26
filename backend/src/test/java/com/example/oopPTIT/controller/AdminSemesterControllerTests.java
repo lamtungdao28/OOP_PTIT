@@ -1,5 +1,7 @@
 package com.example.oopPTIT.controller;
 
+import com.example.oopPTIT.exception.StudentExceptionHandler;
+
 import com.example.oopPTIT.entity.Semester;
 import com.example.oopPTIT.entity.SemesterHasSubject;
 import com.example.oopPTIT.repository.SemesterRepository;
@@ -46,6 +48,7 @@ class AdminSemesterControllerTests {
         semesterRepository = mock(SemesterRepository.class);
         mockMvc = MockMvcBuilders.standaloneSetup(
                 new AdminSemesterController(new SemesterService(semesterRepository)))
+                .setControllerAdvice(new StudentExceptionHandler())
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .build();
     }
@@ -178,8 +181,8 @@ class AdminSemesterControllerTests {
         when(semesterRepository.save(any(Semester.class))).thenThrow(new IllegalStateException("Save failed"));
         mockMvc.perform(post("/api/admin/semesters").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Semester 1\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.message").value("error to add new semester"));
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.message").value("An unexpected error occurred"));
     }
 }

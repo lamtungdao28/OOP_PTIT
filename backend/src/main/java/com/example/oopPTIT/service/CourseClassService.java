@@ -2,18 +2,21 @@ package com.example.oopPTIT.service;
 
 import com.example.oopPTIT.dto.request.AssignLecturerRequest;
 import com.example.oopPTIT.dto.request.CreateCourseClassRequest;
+import com.example.oopPTIT.dto.request.EnrollStudentRequest;
 import com.example.oopPTIT.dto.response.CourseClassResponse;
 import com.example.oopPTIT.dto.response.ResponsePage;
-import com.example.oopPTIT.entity.CourseClass;
-import com.example.oopPTIT.entity.Lecturer;
-import com.example.oopPTIT.entity.Semester;
-import com.example.oopPTIT.entity.Subject;
-import com.example.oopPTIT.repository.CourseClassRepository;
-import com.example.oopPTIT.repository.LecturerRepository;
-import com.example.oopPTIT.repository.SemesterRepository;
-import com.example.oopPTIT.repository.SubjectRepository;
+import com.example.oopPTIT.dto.response.StudentHasCourseClassResponse;
+import com.example.oopPTIT.dto.response.StudentResponse;
+import com.example.oopPTIT.entity.*;
+import com.example.oopPTIT.repository.*;
+import com.example.oopPTIT.repository.specification.CourseClassForStudentSpecification;
 import com.example.oopPTIT.repository.specification.CourseClassSpecificationBuilder;
+import com.example.oopPTIT.repository.specification.StudentInCourseClassSpecification;
+import com.example.oopPTIT.repository.specification.StudentSpecificationBuilder;
+import com.example.oopPTIT.util.Role;
 import com.example.oopPTIT.util.Status;
+import com.example.oopPTIT.security.CurrentUser;
+import org.springframework.security.access.prepost.PreAuthorize;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +30,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
+@PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 public class CourseClassService {
     private static final Pattern SEARCH_PATTERN = Pattern.compile("(\\w+?)([<:>~!])(.*)(\\p{Punct}?)(\\p{Punct}?)");
@@ -35,6 +39,9 @@ public class CourseClassService {
     private final SubjectRepository subjectRepository;
     private final SemesterRepository semesterRepository;
     private final LecturerRepository lecturerRepository;
+    private final StudentHasCourseClassRepository studentHasCourseClassRepository;
+    private final StudentRepository studentRepository;
+    private final CurrentUser currentUser;
 
     @Transactional
     public Long addCourseClass(CreateCourseClassRequest request) {
@@ -80,8 +87,36 @@ public class CourseClassService {
     }
 
     @Transactional(readOnly = true)
-    public ResponsePage<?> advanceSearchWithSpecification(Pageable pageable, String[] courseClass) {
+    public ResponsePage<?> findAllCourseClasses(Pageable pageable, String[] courseClass) {
+        return findCourseClasses(pageable, courseClass, Specification.unrestricted());
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('STUDENT') and #username == authentication.name")
+    public ResponsePage<?> getEnrolledCourseClasses(String username, Pageable pageable, String[] courseClass) {
+        Student student = studentRepository.findByUser_Username(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "An active student account is required"));
+        User user = student.getUser();
+        if (user.getRole() != Role.STUDENT || user.getStatus() != Status.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "An active student account is required");
+        }
+        return findCourseClasses(pageable, courseClass, new CourseClassForStudentSpecification(student.getId()));
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    public ResponsePage<?> getAssignedCourseClasses(Pageable pageable, String[] filters) {
         Specification<CourseClass> specification = Specification.unrestricted();
+        if (!currentUser.isAdmin()) {
+            Long userId = currentUser.id();
+            specification = (root, query, builder) -> builder.equal(root.get("lecturer").get("user").get("id"), userId);
+        }
+        return findCourseClasses(pageable, filters, specification);
+    }
+
+    private ResponsePage<?> findCourseClasses(Pageable pageable, String[] courseClass,
+            Specification<CourseClass> specification) {
         if (courseClass != null) {
             CourseClassSpecificationBuilder builder = new CourseClassSpecificationBuilder();
             for (String filter : courseClass) {
@@ -93,7 +128,7 @@ public class CourseClassService {
             }
             Specification<CourseClass> filters = builder.build();
             if (filters != null) {
-                specification = filters;
+                specification = specification.and(filters);
             }
         }
         Page<CourseClassResponse> courseClasses = courseClassRepository.findAll(specification, pageable)
@@ -119,4 +154,67 @@ public class CourseClassService {
                 .updatedAt(courseClass.getUpdatedAt())
                 .build();
     }
+    public Long addStudentToClass(Long id, EnrollStudentRequest request){
+        CourseClass courseClass = courseClassRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Course class not found: " + id));
+        Long studentId = request.getStudentId();
+        Student student = studentRepository.findById(studentId).orElseThrow(()
+        -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found" + studentId ));
+
+        StudentHasCourseClass studentHasCourseClass = StudentHasCourseClass.builder()
+                .courseClass(courseClass)
+                .student(student)
+                .status(Status.ACTIVE)
+                .build();
+        studentHasCourseClassRepository.save(studentHasCourseClass);
+        return studentHasCourseClass.getId();
+    }
+
+    @Transactional
+    public void removeStudentFromClass(Long id, Long studentId) {
+        if (!courseClassRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course class not found: " + id);
+        }
+        if (!studentRepository.existsById(studentId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found: " + studentId);
+        }
+        long deleted = studentHasCourseClassRepository.deleteByCourseClass_IdAndStudent_Id(id, studentId);
+        if (deleted == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Student " + studentId + " is not enrolled in course class " + id);
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER') and @courseAccess.canManage(#id)")
+    @Transactional(readOnly = true)
+    public ResponsePage<?> getStudentsInCourseClass(Long id, Pageable pageable, String[] studentFilters) {
+        CourseClass courseClass = courseClassRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Course class not found: " + id));
+
+        Specification<Student> specification = new StudentInCourseClassSpecification(id);
+        if (studentFilters != null) {
+            StudentSpecificationBuilder builder = new StudentSpecificationBuilder();
+            for (String filter : studentFilters) {
+                builder.with(filter);
+            }
+            specification = specification.and(builder.build());
+        }
+        CourseClassResponse courseClassResponse = toResponse(courseClass);
+        Page<StudentHasCourseClassResponse> students = studentRepository.findAll(specification, pageable)
+                .map(student -> StudentHasCourseClassResponse.builder()
+                        .student(new StudentResponse(student.getId(), student.getStudentCode(),
+                                student.getFullName(), student.getDateOfBirth(), student.getPhone()))
+                        .courseClass(courseClassResponse)
+                        .build());
+
+        return ResponsePage.builder()
+                .pageNo(students.getNumber())
+                .pageSize(students.getSize())
+                .totalPage(students.getTotalPages())
+                .items(students.getContent())
+                .build();
+    }
+
 }

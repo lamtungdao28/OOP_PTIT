@@ -1,6 +1,6 @@
 package com.example.oopPTIT.dto.request;
 
-import com.example.oopPTIT.util.Status;
+import com.example.oopPTIT.util.TimeStatus;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
@@ -20,5 +20,5 @@ public class ManualAttendanceRequest {
     private Long studentId;
 
     @NotNull
-    private Status status;
+    private TimeStatus status;
 }

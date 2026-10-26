@@ -1,5 +1,7 @@
 package com.example.oopPTIT.service;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.example.oopPTIT.dto.request.CreateSubjectRequest;
 import com.example.oopPTIT.dto.request.UpdateSubjectRequest;
 import com.example.oopPTIT.dto.response.ResponsePage;
@@ -22,6 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
+@PreAuthorize("hasRole('ADMIN')")
 @Slf4j
 @Getter
 @RequiredArgsConstructor

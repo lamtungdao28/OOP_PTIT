@@ -1,8 +1,9 @@
 package com.example.oopPTIT.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.example.oopPTIT.dto.request.CreateSemesterRequest;
 import com.example.oopPTIT.dto.response.ResponseData;
-import com.example.oopPTIT.dto.response.ResponseError;
 import com.example.oopPTIT.dto.response.ResponsePage;
 import com.example.oopPTIT.service.SemesterService;
 import jakarta.validation.Valid;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@PreAuthorize("hasRole('ADMIN')")
 @RequestMapping("/api/admin/semesters")
 @Validated
 @RequiredArgsConstructor
@@ -26,12 +28,8 @@ public class AdminSemesterController {
 
     @PostMapping
     public ResponseData<Long> addSemester(@RequestBody @Valid CreateSemesterRequest request) {
-        try {
-            Long semesterId = semesterService.addSemester(request);
-            return new ResponseData<>(HttpStatus.CREATED.value(), "added semester", semesterId);
-        } catch (Exception e) {
-            return new ResponseError(HttpStatus.BAD_REQUEST.value(), "error to add new semester");
-        }
+        Long semesterId = semesterService.addSemester(request);
+        return new ResponseData<>(HttpStatus.CREATED.value(), "added semester", semesterId);
     }
 
     @GetMapping
