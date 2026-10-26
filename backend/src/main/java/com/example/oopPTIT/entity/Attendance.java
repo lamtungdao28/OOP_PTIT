@@ -1,6 +1,5 @@
 package com.example.oopPTIT.entity;
 
-import com.example.oopPTIT.util.Status;
 import com.example.oopPTIT.util.TimeStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,6 +9,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,7 +19,16 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ATTENDANCE")
+@Table(
+        name = "ATTENDANCE",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_attendance_session_student",
+                columnNames = {
+                        "ATTENDNCE_SESSIONSid",
+                        "STUDENTSid"
+                }
+        )
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,7 +39,7 @@ public class Attendance extends AbtractEntity<Long> {
     @JoinColumn(name = "ATTENDNCE_SESSIONSid", nullable = false)
     private AttendanceSession attendanceSession;
 
-    @Column(name = "recognized_at", nullable = false)
+    @Column(name = "recognized_at")
     private LocalDateTime recognizedAt;
 
     @Enumerated(EnumType.STRING)
@@ -40,7 +49,11 @@ public class Attendance extends AbtractEntity<Long> {
     @Column(name = "method", nullable = false)
     private Integer method;
 
-    @Column(name = "confidence", nullable = false, precision = 5, scale = 4)
+    @Column(
+            name = "confidence",
+            precision = 5,
+            scale = 4
+    )
     private BigDecimal confidence;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

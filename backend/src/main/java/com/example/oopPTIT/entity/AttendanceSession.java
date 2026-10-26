@@ -35,7 +35,7 @@ public class AttendanceSession extends AbtractEntity<Long> {
     @Column(name = "opened_at", nullable = false)
     private LocalDateTime openedAt;
 
-    @Column(name = "closed_at", nullable = false)
+    @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
     @Column(name = "late_after_minutes")

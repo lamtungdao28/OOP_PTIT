@@ -1,6 +1,6 @@
 package com.example.oopPTIT.dto.request;
 
-import com.example.oopPTIT.util.Status;
+import com.example.oopPTIT.util.TimeStatus;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -14,6 +14,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class UpdateAttendanceRequest {
 
-    @NotNull
-    private Status status;
+    @NotNull(message = "Attendance status is required")
+    private TimeStatus status;
 }

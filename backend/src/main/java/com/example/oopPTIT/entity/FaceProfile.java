@@ -1,5 +1,6 @@
 package com.example.oopPTIT.entity;
-
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import com.example.oopPTIT.util.Status;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,7 +27,12 @@ public class FaceProfile extends AbtractEntity<Long> {
     @JoinColumn(name = "STUDENTSid", nullable = false, unique = true)
     private Student student;
 
-    @Column(name = "embedding", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARBINARY)
+    @Column(
+            name = "embedding",
+            nullable = false,
+            length = 8192
+    )
     private byte[] embedding;
 
     @Column(name = "model_name", nullable = false, length = 255)
