@@ -5,6 +5,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import com.example.oopPTIT.dto.request.AssignLecturerRequest;
 import com.example.oopPTIT.dto.request.CreateCourseClassRequest;
 import com.example.oopPTIT.dto.request.EnrollStudentRequest;
+import com.example.oopPTIT.dto.request.UpdateCourseClassRequest;
 import com.example.oopPTIT.dto.response.CourseClassResponse;
 import com.example.oopPTIT.dto.response.ResponseData;
 import com.example.oopPTIT.dto.response.ResponsePage;
@@ -41,6 +42,13 @@ public class AdminCourseClassController {
     public ResponseData<CourseClassResponse> getCourseClassById(@PathVariable Long id) {
         return new ResponseData<>(HttpStatus.ACCEPTED.value(), "Get course class detail",
                 courseClassService.getCourseClassById(id));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseData<CourseClassResponse> updateCourseClass(@PathVariable Long id,
+            @RequestBody @Valid UpdateCourseClassRequest request) {
+        return new ResponseData<>(HttpStatus.OK.value(), "Course class updated successfully",
+                courseClassService.updateCourseClass(id, request));
     }
 
     @PatchMapping("/{id}/lecturer")

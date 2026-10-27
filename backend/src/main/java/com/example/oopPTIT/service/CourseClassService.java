@@ -3,6 +3,7 @@ package com.example.oopPTIT.service;
 import com.example.oopPTIT.dto.request.AssignLecturerRequest;
 import com.example.oopPTIT.dto.request.CreateCourseClassRequest;
 import com.example.oopPTIT.dto.request.EnrollStudentRequest;
+import com.example.oopPTIT.dto.request.UpdateCourseClassRequest;
 import com.example.oopPTIT.dto.response.CourseClassResponse;
 import com.example.oopPTIT.dto.response.ResponsePage;
 import com.example.oopPTIT.dto.response.StudentHasCourseClassResponse;
@@ -84,6 +85,43 @@ public class CourseClassService {
                         "Lecturer not found: " + request.getLecturerId()));
 
         courseClass.setLecturer(lecturer);
+        return toResponse(courseClassRepository.saveAndFlush(courseClass));
+    }
+
+    @Transactional
+    public CourseClassResponse updateCourseClass(Long id, UpdateCourseClassRequest request) {
+        CourseClass courseClass = courseClassRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Course class not found: " + id));
+
+        if (request.getClassCode() != null) {
+            courseClass.setClassCode(request.getClassCode().strip());
+        }
+        if (request.getMaxStudents() != null) {
+            courseClass.setMaxStudents(request.getMaxStudents());
+        }
+        if (request.getStatus() != null) {
+            courseClass.setStatus(request.getStatus());
+        }
+        if (request.getSubjectId() != null) {
+            Subject subject = subjectRepository.findById(request.getSubjectId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Subject not found: " + request.getSubjectId()));
+            courseClass.setSubject(subject);
+        }
+        if (request.getSemesterId() != null) {
+            Semester semester = semesterRepository.findById(request.getSemesterId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Semester not found: " + request.getSemesterId()));
+            courseClass.setSemester(semester);
+        }
+        if (request.getLecturerId() != null) {
+            Lecturer lecturer = lecturerRepository.findById(request.getLecturerId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Lecturer not found: " + request.getLecturerId()));
+            courseClass.setLecturer(lecturer);
+        }
+
         return toResponse(courseClassRepository.saveAndFlush(courseClass));
     }
 
