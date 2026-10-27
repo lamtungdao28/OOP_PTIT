@@ -30,22 +30,24 @@ variables. GET pagination and filters use query parameters.
 | `POST /api/admin/classes/{id}/enrollments` | `EnrollStudentRequest` |
 | `DELETE /api/admin/classes/{id}/enrollments/{studentId}` | No body; class and student IDs in the path |
 | `GET /api/students/me/classes` | `Pageable` and optional `String[] courseClass`; identity from the authenticated Principal |
-| `POST/PUT /api/students/me/face-profile` | `FaceProfileRequest` |
+| `GET /api/lecturers/me/classes` | `Pageable` and optional `String[] courseClass`; authenticated LECTURER's assigned classes |
+| `POST/PUT /api/students/me/face-profile` | Multipart `image` part; authenticated STUDENT |
 | `GET /api/classes/{id}/sessions` | `Pageable`; assigned lecturer or ADMIN; default sort `sessionNo,asc` |
-| `POST /api/classes/{id}/sessions` | `CreateClassSessionRequest` |
+| `POST /api/classes/{id}/sessions` | `CreateClassSessionRequest`; assigned lecturer or ADMIN |
 | `POST /api/sessions/{id}/attendance/open` | `OpenAttendanceSessionRequest`; assigned LECTURER only |
 | `GET /api/sessions/{id}/attendance` | No body; assigned LECTURER only; path ID is the ClassSession ID |
-| `POST /api/sessions/{id}/attendance/recognize` | Reserved DTO `RecognizeAttendanceRequest`; endpoint not implemented |
+| `POST /api/sessions/{id}/attendance/recognize` | Multipart `image` part; assigned LECTURER only; path ID is the ClassSession ID |
 | `POST /api/sessions/{id}/attendance/manual` | `ManualAttendanceRequest`; assigned LECTURER only |
 | `PATCH /api/attendance/{id}` | `UpdateAttendanceRequest`; Attendance record ID; assigned LECTURER only |
 | `POST /api/sessions/{id}/attendance/close` | No body; assigned LECTURER only |
 | `GET /api/sessions/{id}/attendance/results` | `Pageable`; assigned LECTURER only; default sort `student.studentCode,asc` |
 
-Use `@Valid @RequestBody` for JSON. The two image DTOs use multipart/form-data
-with an `image` part and `@Valid @ModelAttribute`; student identity comes from JWT.
-Image decoding, allowed formats and upload limits must be enforced when adding
-the upload endpoints. No request body is needed for closing attendance, deleting
-an enrollment or the listed GET endpoints.
+Use `@Valid @RequestBody` for JSON. Face-profile registration/replacement and
+recognition accept multipart/form-data with an `image` part via `@RequestPart`;
+the existing image request DTOs are not used by these controllers. Student
+identity comes from JWT. Uploads accept JPEG, PNG or WebP up to 5 MB; FastAPI
+decodes the image and requires exactly one clear face. No request body is needed
+for closing attendance, deleting an enrollment or the listed GET endpoints.
 
 For profile and subject PATCH requests, omitted or null fields mean unchanged;
 the service must skip them when applying updates. Blank supplied strings are
@@ -159,6 +161,29 @@ Attendance uses `TimeStatus` (PRESENT/LATE/ABSENT), and attendance sessions use
 and `UpdateAttendanceRequest` all use `TimeStatus`; ACTIVE/INACTIVE are invalid
 for attendance writes. No attendance schema migration is needed.
 
+`GET /api/lecturers/me/classes` accepts zero-based `page`, `size`, `sort` and
+repeated `courseClass` Specification filters. It only returns the current
+LECTURER's assigned classes; client-supplied user or lecturer IDs do not select
+another account. ADMIN uses the unchanged `/api/lecturer/classes` route or the
+admin class list instead.
+
+`POST /api/classes/{id}/sessions` reuses `CreateClassSessionRequest`:
+
+```json
+{"sessionDate":"2026-10-28","startTime":"09:00","endTime":"11:00"}
+```
+
+All three fields are required, and `endTime` must be after `startTime` on the
+same date. The path ID is the course class ID. ADMIN can create a session in
+any class; a LECTURER must be assigned to that class. Success returns HTTP 201
+with `ClassSessionResponse` in `data`, including the generated ID and timestamps.
+The backend assigns `sessionNo` using the existing globally unique numbering
+rule, not numbering starting at 1 in each class. The same class/date/start/end
+combination returns 409. Concurrent allocation collisions are retried in fresh
+transactions up to three attempts; persistent conflicts return 409.
+Creation does not open attendance; use the returned `data.id` with the separate
+attendance-open endpoint. No entity, schema or mock SQL changes are required.
+
 `POST /api/sessions/{id}/attendance/open` reuses `OpenAttendanceSessionRequest`:
 
 ```json
@@ -204,7 +229,9 @@ items contain existing attendance records and student ID/code/name only, with
 status/time/method. `unmarked` counts currently ACTIVE students with no record.
 Default pagination is page 0, size 20, sort `student.studentCode,asc`.
 All four endpoints above require the assigned LECTURER. The recognition endpoint
-is intentionally not implemented. See `docs/SECURITY.md` for full examples.
+is implemented separately with multipart image input; see the repository root
+README and `face-service/README.md`. The earlier manual-attendance examples in
+`docs/SECURITY.md` predate the face-recognition integration.
 
 `POST /api/admin/classes` stores the semester through `CourseClass.semester`
 (`COURSE_CLASSES.SEMESTERSid`). The service checks that the subject, semester and

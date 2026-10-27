@@ -113,6 +113,7 @@ public class SecurityConfig {
                         auth.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll();
                     }
                     auth.requestMatchers("/api/admin/**").hasRole("ADMIN")
+                            .requestMatchers("/api/lecturers/me/**").hasRole("LECTURER")
                             .requestMatchers("/api/lecturer/**").hasAnyRole("ADMIN", "LECTURER")
                             .requestMatchers("/api/student/**", "/api/students/me/**").hasRole("STUDENT")
                             .anyRequest().authenticated();

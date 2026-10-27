@@ -7,12 +7,14 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.Length;
 
 @Entity
 @Table(name = "FACE_PROFILES")
@@ -26,7 +28,8 @@ public class FaceProfile extends AbtractEntity<Long> {
     @JoinColumn(name = "STUDENTSid", nullable = false, unique = true)
     private Student student;
 
-    @Column(name = "embedding", nullable = false)
+    @Lob
+    @Column(name = "embedding", nullable = false, length = Length.LONG32)
     private byte[] embedding;
 
     @Column(name = "model_name", nullable = false, length = 255)
