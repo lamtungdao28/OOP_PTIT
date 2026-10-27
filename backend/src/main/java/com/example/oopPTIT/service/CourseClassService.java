@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -117,6 +118,8 @@ public class CourseClassService {
 
     private ResponsePage<?> findCourseClasses(Pageable pageable, String[] courseClass,
             Specification<CourseClass> specification) {
+        validateSort(pageable, Set.of("id", "classCode", "maxStudents", "status", "createdAt", "updatedAt",
+                "subject.id", "semester.id", "lecturer.id"));
         if (courseClass != null) {
             CourseClassSpecificationBuilder builder = new CourseClassSpecificationBuilder();
             for (String filter : courseClass) {
@@ -189,6 +192,7 @@ public class CourseClassService {
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER') and @courseAccess.canManage(#id)")
     @Transactional(readOnly = true)
     public ResponsePage<?> getStudentsInCourseClass(Long id, Pageable pageable, String[] studentFilters) {
+        validateSort(pageable, Set.of("id", "studentCode", "fullName", "dateOfBirth", "phone", "createdAt", "updatedAt"));
         CourseClass courseClass = courseClassRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Course class not found: " + id));
@@ -217,4 +221,9 @@ public class CourseClassService {
                 .build();
     }
 
+    private void validateSort(Pageable pageable, Set<String> allowedFields) {
+        if (pageable.getSort().stream().anyMatch(order -> !allowedFields.contains(order.getProperty()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported sort field");
+        }
+    }
 }

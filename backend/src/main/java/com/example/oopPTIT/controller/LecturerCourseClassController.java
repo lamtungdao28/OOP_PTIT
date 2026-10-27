@@ -1,5 +1,6 @@
 package com.example.oopPTIT.controller;
 
+import com.example.oopPTIT.dto.request.CreateClassSessionRequest;
 import com.example.oopPTIT.dto.request.ManualAttendanceRequest;
 import com.example.oopPTIT.dto.request.OpenAttendanceSessionRequest;
 import com.example.oopPTIT.dto.request.RecordAttendanceRequest;
@@ -44,11 +45,27 @@ public class LecturerCourseClassController {
                 courseClassService.getAssignedCourseClasses(pageable, filters));
     }
 
+    @GetMapping("/lecturers/me/classes")
+    @PreAuthorize("hasRole('LECTURER')")
+    public ResponseData<ResponsePage<?>> myClasses(
+            @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable,
+            @RequestParam(name = "courseClass", required = false) String[] filters) {
+        return new ResponseData<>(200, "Assigned classes retrieved successfully",
+                courseClassService.getAssignedCourseClasses(pageable, filters));
+    }
+
     @GetMapping("/classes/{id}/sessions")
     public ResponseData<ResponsePage<List<ClassSessionResponse>>> sessions(@PathVariable("id") Long id,
             @ParameterObject @PageableDefault(size = 20, sort = "sessionNo") Pageable pageable) {
         return new ResponseData<>(200, "Class sessions retrieved successfully",
                 classSessionService.getSessions(id, pageable));
+    }
+
+    @PostMapping("/classes/{id}/sessions")
+    public ResponseEntity<ResponseData<ClassSessionResponse>> createSession(@PathVariable("id") Long id,
+            @Valid @RequestBody CreateClassSessionRequest request) {
+        return ResponseEntity.status(201).body(new ResponseData<>(201, "Class session created successfully",
+                classSessionService.createSession(id, request)));
     }
 
     @PostMapping("/sessions/{id}/attendance/open")

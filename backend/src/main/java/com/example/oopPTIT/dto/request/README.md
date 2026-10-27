@@ -30,9 +30,10 @@ variables. GET pagination and filters use query parameters.
 | `POST /api/admin/classes/{id}/enrollments` | `EnrollStudentRequest` |
 | `DELETE /api/admin/classes/{id}/enrollments/{studentId}` | No body; class and student IDs in the path |
 | `GET /api/students/me/classes` | `Pageable` and optional `String[] courseClass`; identity from the authenticated Principal |
+| `GET /api/lecturers/me/classes` | `Pageable` and optional `String[] courseClass`; authenticated LECTURER's assigned classes |
 | `POST/PUT /api/students/me/face-profile` | Multipart `image` part; authenticated STUDENT |
 | `GET /api/classes/{id}/sessions` | `Pageable`; assigned lecturer or ADMIN; default sort `sessionNo,asc` |
-| `POST /api/classes/{id}/sessions` | `CreateClassSessionRequest` exists, but endpoint is not implemented |
+| `POST /api/classes/{id}/sessions` | `CreateClassSessionRequest`; assigned lecturer or ADMIN |
 | `POST /api/sessions/{id}/attendance/open` | `OpenAttendanceSessionRequest`; assigned LECTURER only |
 | `GET /api/sessions/{id}/attendance` | No body; assigned LECTURER only; path ID is the ClassSession ID |
 | `POST /api/sessions/{id}/attendance/recognize` | Multipart `image` part; assigned LECTURER only; path ID is the ClassSession ID |
@@ -159,6 +160,29 @@ Attendance uses `TimeStatus` (PRESENT/LATE/ABSENT), and attendance sessions use
 `SessionStatus` (OPEN/CLOSED). `RecordAttendanceRequest`, `ManualAttendanceRequest`
 and `UpdateAttendanceRequest` all use `TimeStatus`; ACTIVE/INACTIVE are invalid
 for attendance writes. No attendance schema migration is needed.
+
+`GET /api/lecturers/me/classes` accepts zero-based `page`, `size`, `sort` and
+repeated `courseClass` Specification filters. It only returns the current
+LECTURER's assigned classes; client-supplied user or lecturer IDs do not select
+another account. ADMIN uses the unchanged `/api/lecturer/classes` route or the
+admin class list instead.
+
+`POST /api/classes/{id}/sessions` reuses `CreateClassSessionRequest`:
+
+```json
+{"sessionDate":"2026-10-28","startTime":"09:00","endTime":"11:00"}
+```
+
+All three fields are required, and `endTime` must be after `startTime` on the
+same date. The path ID is the course class ID. ADMIN can create a session in
+any class; a LECTURER must be assigned to that class. Success returns HTTP 201
+with `ClassSessionResponse` in `data`, including the generated ID and timestamps.
+The backend assigns `sessionNo` using the existing globally unique numbering
+rule, not numbering starting at 1 in each class. The same class/date/start/end
+combination returns 409. Concurrent allocation collisions are retried in fresh
+transactions up to three attempts; persistent conflicts return 409.
+Creation does not open attendance; use the returned `data.id` with the separate
+attendance-open endpoint. No entity, schema or mock SQL changes are required.
 
 `POST /api/sessions/{id}/attendance/open` reuses `OpenAttendanceSessionRequest`:
 

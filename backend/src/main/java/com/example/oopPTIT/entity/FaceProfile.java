@@ -14,6 +14,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.Length;
 
 @Entity
 @Table(name = "FACE_PROFILES")
@@ -28,7 +29,7 @@ public class FaceProfile extends AbtractEntity<Long> {
     private Student student;
 
     @Lob
-    @Column(name = "embedding", nullable = false)
+    @Column(name = "embedding", nullable = false, length = Length.LONG32)
     private byte[] embedding;
 
     @Column(name = "model_name", nullable = false, length = 255)

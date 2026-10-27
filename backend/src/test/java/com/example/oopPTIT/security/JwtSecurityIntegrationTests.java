@@ -1,6 +1,7 @@
 package com.example.oopPTIT.security;
 
 import com.example.oopPTIT.SecurityTestSupport;
+import com.example.oopPTIT.dto.request.CreateClassSessionRequest;
 import com.example.oopPTIT.dto.request.ManualAttendanceRequest;
 import com.example.oopPTIT.dto.request.OpenAttendanceSessionRequest;
 import com.example.oopPTIT.dto.request.RecordAttendanceRequest;
@@ -75,6 +76,7 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
     @Autowired private UserRepository users;
     @Autowired private AttendanceRepository attendances;
     @Autowired private AttendanceSessionRepository sessions;
+    @Autowired private ClassSessionRepository classSessions;
     @Autowired private JwtEncoder encoder;
     @Autowired private JwtDecoder decoder;
     @Autowired private JwtProperties jwtProperties;
@@ -189,7 +191,7 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
     @ValueSource(strings = {"/api/auth/me", "/api/admin/users", "/api/admin/students", "/api/admin/lecturers",
             "/api/admin/classes", "/api/admin/subjects", "/api/admin/semesters", "/api/lecturer/classes",
             "/api/student/profile", "/api/student/attendance", "/api/students/me/classes", "/api/classes/1/sessions",
-            "/api/sessions/1/attendance"})
+            "/api/sessions/1/attendance", "/api/lecturers/me/classes"})
     void requiresJwtForEveryProtectedEndpoint(String path) throws Exception {
         mvc.perform(get(path)).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.status").value(401))
                 .andExpect(header().string("WWW-Authenticate", "Bearer"))
@@ -239,7 +241,8 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
     @ParameterizedTest
     @CsvSource({"student,/api/admin/users", "lecturer,/api/admin/users", "student,/api/lecturer/classes",
             "lecturer,/api/student/profile", "lecturer,/api/student/attendance", "lecturer,/api/students/me/classes",
-            "student,/api/classes/1/sessions"})
+            "student,/api/classes/1/sessions", "student,/api/lecturers/me/classes",
+            "admin,/api/lecturers/me/classes"})
     void enforcesRoleBoundaries(String username, String path) throws Exception {
         mvc.perform(get(path).header("Authorization", "Bearer " + login(username, PASSWORD)))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.status").value(403));
@@ -341,6 +344,156 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
         mvc.perform(get("/api/classes/{id}/sessions", otherClass.getId())
                         .header("Authorization", "Bearer " + login("lecturer", PASSWORD)))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    void assignedLecturerCanCreateClassSessionWithoutOpeningAttendance() throws Exception {
+        String body = json.writeValueAsString(newSessionRequest());
+        String response = mvc.perform(post("/api/classes/{id}/sessions", ownedClass.getId())
+                        .header("Authorization", "Bearer " + login("lecturer", PASSWORD))
+                        .param("classId", otherClass.getId().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value(201))
+                .andExpect(jsonPath("$.data.classId").value(ownedClass.getId().intValue()))
+                .andExpect(jsonPath("$.data.sessionNo").value(3))
+                .andExpect(jsonPath("$.data.sessionDate").value(newSessionRequest().getSessionDate().toString()))
+                .andExpect(jsonPath("$.data.startTime").value("09:00:00"))
+                .andExpect(jsonPath("$.data.endTime").value("11:00:00"))
+                .andExpect(jsonPath("$.data.createdAt").exists())
+                .andExpect(jsonPath("$.data.updatedAt").exists())
+                .andExpect(jsonPath("$.data.courseClass").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        Long id = json.readTree(response).get("data").get("id").asLong();
+        assertThat(classSessions.findById(id)).isPresent();
+        assertThat(classSessions.count()).isEqualTo(3);
+        assertThat(sessions.existsByClassSession_Id(id)).isFalse();
+    }
+
+    @Test
+    void adminCanCreateSessionsForAnyClassWithGloballyUniqueNumbers() throws Exception {
+        String token = login("admin", PASSWORD);
+        int expectedNumber = 3;
+        for (CourseClass courseClass : List.of(ownedClass, otherClass)) {
+            mvc.perform(post("/api/classes/{id}/sessions", courseClass.getId())
+                            .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                            .content(json.writeValueAsString(newSessionRequest())))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.classId").value(courseClass.getId().intValue()))
+                    .andExpect(jsonPath("$.data.sessionNo").value(expectedNumber++));
+        }
+        assertThat(classSessions.count()).isEqualTo(4);
+    }
+
+    @Test
+    void cannotCreateClassSessionWithoutJwt() throws Exception {
+        mvc.perform(post("/api/classes/{id}/sessions", ownedClass.getId()).contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(newSessionRequest())))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.status").value(401));
+        assertThat(classSessions.count()).isEqualTo(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"student", "other-lecturer"})
+    void studentsAndUnassignedLecturersCannotCreateClassSessions(String username) throws Exception {
+        mvc.perform(post("/api/classes/{id}/sessions", ownedClass.getId())
+                        .header("Authorization", "Bearer " + login(username, PASSWORD))
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(newSessionRequest())))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.status").value(403));
+        assertThat(classSessions.count()).isEqualTo(2);
+    }
+
+    @Test
+    void duplicateClassSessionTimeSlotReturnsConflictWithoutCreatingAnotherRecord() throws Exception {
+        String token = login("lecturer", PASSWORD);
+        String body = json.writeValueAsString(newSessionRequest());
+        mvc.perform(post("/api/classes/{id}/sessions", ownedClass.getId())
+                        .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+        mvc.perform(post("/api/classes/{id}/sessions", ownedClass.getId())
+                        .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.status").value(409));
+        assertThat(classSessions.count()).isEqualTo(3);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "null", "{}", "{broken-json",
+            "{\"startTime\":\"09:00\",\"endTime\":\"11:00\"}",
+            "{\"sessionDate\":\"2026-10-28\",\"endTime\":\"11:00\"}",
+            "{\"sessionDate\":\"2026-10-28\",\"startTime\":\"09:00\"}",
+            "{\"sessionDate\":\"2026-10-28\",\"startTime\":\"09:00\",\"endTime\":\"09:00\"}",
+            "{\"sessionDate\":\"2026-10-28\",\"startTime\":\"11:00\",\"endTime\":\"09:00\"}",
+            "{\"sessionDate\":\"invalid\",\"startTime\":\"09:00\",\"endTime\":\"11:00\"}",
+            "{\"sessionDate\":\"2026-10-28\",\"startTime\":\"invalid\",\"endTime\":\"11:00\"}"})
+    void classSessionCreationRejectsInvalidBodies(String body) throws Exception {
+        mvc.perform(post("/api/classes/{id}/sessions", ownedClass.getId())
+                        .header("Authorization", "Bearer " + login("lecturer", PASSWORD))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400));
+        assertThat(classSessions.count()).isEqualTo(2);
+    }
+
+    @Test
+    void creatingSessionForMissingOrMalformedClassReturnsAppropriateError() throws Exception {
+        String token = login("admin", PASSWORD);
+        String body = json.writeValueAsString(newSessionRequest());
+        mvc.perform(post("/api/classes/{id}/sessions", Long.MAX_VALUE)
+                        .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.status").value(404));
+        mvc.perform(post("/api/classes/not-a-number/sessions")
+                        .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400));
+        assertThat(classSessions.count()).isEqualTo(2);
+    }
+
+    @Test
+    void sessionNumberExhaustionReturnsConflictInsteadOfOverflow() throws Exception {
+        transactions.executeWithoutResult(transaction -> classSession(otherClass, Integer.MAX_VALUE));
+        mvc.perform(post("/api/classes/{id}/sessions", ownedClass.getId())
+                        .header("Authorization", "Bearer " + login("lecturer", PASSWORD))
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(newSessionRequest())))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.status").value(409));
+        assertThat(classSessions.count()).isEqualTo(3);
+    }
+
+    @Test
+    void concurrentRequestsCannotCreateTheSameClassSessionTwice() throws Exception {
+        String token = login("lecturer", PASSWORD);
+        String body = json.writeValueAsString(newSessionRequest());
+        CountDownLatch start = new CountDownLatch(1);
+        Callable<Integer> create = () -> {
+            assertThat(start.await(10, TimeUnit.SECONDS)).isTrue();
+            return mvc.perform(post("/api/classes/{id}/sessions", ownedClass.getId())
+                            .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andReturn().getResponse().getStatus();
+        };
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(create);
+            var second = executor.submit(create);
+            start.countDown();
+            assertThat(List.of(first.get(20, TimeUnit.SECONDS), second.get(20, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(201, 409);
+        }
+        assertThat(classSessions.count()).isEqualTo(3);
+    }
+
+    @Test
+    void concurrentRequestsForDifferentClassesAllocateDistinctSessionNumbers() throws Exception {
+        String token = login("admin", PASSWORD);
+        String body = json.writeValueAsString(newSessionRequest());
+        CountDownLatch start = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var results = List.of(ownedClass, otherClass).stream().map(courseClass -> executor.submit(() -> {
+                assertThat(start.await(10, TimeUnit.SECONDS)).isTrue();
+                return mvc.perform(post("/api/classes/{id}/sessions", courseClass.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andReturn().getResponse().getStatus();
+            })).toList();
+            start.countDown();
+            for (var result : results) assertThat(result.get(20, TimeUnit.SECONDS)).isEqualTo(201);
+        }
+        assertThat(classSessions.findAll()).extracting(ClassSession::getSessionNo)
+                .containsExactlyInAnyOrder(1, 2, 3, 4);
     }
 
     @ParameterizedTest
@@ -607,19 +760,43 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
                 .andExpect(jsonPath("$.data.items[0].id").value(ownedClass.getId().intValue()));
     }
 
-    @Test
-    void lecturerCanOnlyListAssignedClassesAndTheirStudents() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/lecturer/classes", "/api/lecturers/me/classes"})
+    void lecturerCanOnlyListAssignedClassesAndTheirStudents(String path) throws Exception {
         String token = login("lecturer", PASSWORD);
-        mvc.perform(get("/api/lecturer/classes").header("Authorization", "Bearer " + token))
+        mvc.perform(get(path).header("Authorization", "Bearer " + token)
+                        .param("username", "other-lecturer").param("lecturerId", otherClass.getLecturer().getId().toString()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(ownedClass.getId().intValue()));
-        mvc.perform(get("/api/lecturer/classes").header("Authorization", "Bearer " + token)
+        mvc.perform(get(path).header("Authorization", "Bearer " + token)
                         .param("courseClass", "id:" + otherClass.getId()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.items").isEmpty());
         mvc.perform(get("/api/classes/{id}/students", ownedClass.getId()).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.items.length()").value(1));
         mvc.perform(get("/api/classes/{id}/students", otherClass.getId()).header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void lecturerSelfClassListSupportsPaginationSortingAndFilters() throws Exception {
+        Long extraClassId = transactions.execute(transaction -> {
+            CourseClass managed = entityManager.find(CourseClass.class, ownedClass.getId());
+            return courseClass("INT001-03", managed.getLecturer(), managed.getSubject(), managed.getSemester()).getId();
+        });
+        mvc.perform(get("/api/lecturers/me/classes")
+                        .header("Authorization", "Bearer " + login("lecturer", PASSWORD))
+                        .param("courseClass", "classCode~INT001").param("page", "1")
+                        .param("size", "1").param("sort", "classCode,asc"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.pageNo").value(1))
+                .andExpect(jsonPath("$.data.pageSize").value(1)).andExpect(jsonPath("$.data.totalPage").value(2))
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(extraClassId.intValue()));
+    }
+
+    @Test
+    void legacyLecturerClassListStillAllowsAdminToSeeAllClasses() throws Exception {
+        mvc.perform(get("/api/lecturer/classes").header("Authorization", "Bearer " + login("admin", PASSWORD)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.items.length()").value(2));
     }
 
     @Test
@@ -1152,6 +1329,8 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
                 .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> classSessionService.getSessions(ownedClass.getId(), PageRequest.of(0, 20)))
                 .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> classSessionService.createSession(ownedClass.getId(), newSessionRequest()))
+                .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> attendanceService.openAttendanceSession(ownedSession.getClassSession().getId(),
                 new OpenAttendanceSessionRequest(15))).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> attendanceService.getAttendanceSession(ownedSession.getClassSession().getId()))
@@ -1181,6 +1360,8 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
             assertThatThrownBy(() -> courseClassService.getStudentsInCourseClass(otherClass.getId(), PageRequest.of(0, 20), null))
                     .isInstanceOf(AccessDeniedException.class);
             assertThatThrownBy(() -> classSessionService.getSessions(otherClass.getId(), PageRequest.of(0, 20)))
+                    .isInstanceOf(AccessDeniedException.class);
+            assertThatThrownBy(() -> classSessionService.createSession(otherClass.getId(), newSessionRequest()))
                     .isInstanceOf(AccessDeniedException.class);
             assertThatThrownBy(() -> attendanceService.openAttendanceSession(otherSession.getClassSession().getId(),
                     new OpenAttendanceSessionRequest(15))).isInstanceOf(AccessDeniedException.class);
@@ -1327,6 +1508,10 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
         courseClass.setStatus(Status.ACTIVE);
         entityManager.persist(courseClass);
         return courseClass;
+    }
+
+    private CreateClassSessionRequest newSessionRequest() {
+        return new CreateClassSessionRequest(LocalDate.now().plusDays(1), LocalTime.of(9, 0), LocalTime.of(11, 0));
     }
 
     private ClassSession classSession(CourseClass courseClass, int number) {
