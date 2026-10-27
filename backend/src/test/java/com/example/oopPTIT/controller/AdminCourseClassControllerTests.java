@@ -214,6 +214,49 @@ class AdminCourseClassControllerTests {
     }
 
     @Test
+    void updatesCourseClassInformationIncludingLecturer() throws Exception {
+        Subject replacementSubject = new Subject();
+        replacementSubject.setId(11L);
+        Semester replacementSemester = new Semester();
+        replacementSemester.setId(6L);
+        Lecturer replacementLecturer = new Lecturer();
+        replacementLecturer.setId(52L);
+        when(courseClassRepository.findById(12L)).thenReturn(Optional.of(courseClass));
+        when(subjectRepository.findById(11L)).thenReturn(Optional.of(replacementSubject));
+        when(semesterRepository.findById(6L)).thenReturn(Optional.of(replacementSemester));
+        when(lecturerRepository.findById(52L)).thenReturn(Optional.of(replacementLecturer));
+        when(courseClassRepository.saveAndFlush(courseClass)).thenReturn(courseClass);
+
+        mockMvc.perform(patch("/api/admin/classes/12").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"classCode":" INT2204-02 ","subjectId":11,"semesterId":6,
+                                 "lecturerId":52,"maxStudents":65,"status":"INACTIVE"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Course class updated successfully"))
+                .andExpect(jsonPath("$.data.classCode").value("INT2204-02"))
+                .andExpect(jsonPath("$.data.subjectId").value(11))
+                .andExpect(jsonPath("$.data.semesterId").value(6))
+                .andExpect(jsonPath("$.data.lecturerId").value(52))
+                .andExpect(jsonPath("$.data.maxStudents").value(65))
+                .andExpect(jsonPath("$.data.status").value("INACTIVE"));
+
+        verify(courseClassRepository).saveAndFlush(courseClass);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"classCode\":\" \"}", "{\"subjectId\":0}", "{\"semesterId\":-1}",
+            "{\"lecturerId\":0}", "{\"maxStudents\":0}", "{\"status\":\"UNKNOWN\"}"
+    })
+    void rejectsInvalidCourseClassUpdates(String body) throws Exception {
+        mockMvc.perform(patch("/api/admin/classes/12").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(courseClassRepository, lecturerRepository, subjectRepository, semesterRepository);
+    }
+
+    @Test
     void allowsAssigningTheCurrentLecturerAgain() throws Exception {
         when(courseClassRepository.findById(12L)).thenReturn(Optional.of(courseClass));
         when(courseClassRepository.saveAndFlush(courseClass)).thenReturn(courseClass);
