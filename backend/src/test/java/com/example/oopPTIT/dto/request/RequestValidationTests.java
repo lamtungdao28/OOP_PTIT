@@ -84,6 +84,15 @@ class RequestValidationTests {
     }
 
     @Test
+    void acceptsPartialCourseClassUpdates() {
+        var request = JSON.readValue("""
+                {"lecturerId":52,"maxStudents":60,"status":"ACTIVE"}
+                """, UpdateCourseClassRequest.class);
+
+        assertThat(validator.validate(request)).isEmpty();
+    }
+
+    @Test
     void acceptsOmittedAndNullFieldsInLecturerUpdates() {
         var lecturer = JSON.readValue("""
                 {"department":"CNTT","email":null}
