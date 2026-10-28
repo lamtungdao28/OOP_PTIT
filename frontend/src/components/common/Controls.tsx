@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -7,7 +7,7 @@ export function PageHeader({ title, description, action }: { title: string; desc
 }
 
 export function SearchInput({ value, onChange, placeholder = 'Tìm kiếm…' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return <div className="relative w-full sm:w-80"><Search className="absolute left-3 top-2.5 h-5 w-5 text-slate-400"/><input className="field pl-10" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}/></div>
+  return <div className="relative w-full sm:w-96"><Search className="pointer-events-none absolute left-3 top-2.5 h-5 w-5 text-slate-400"/><input aria-label={placeholder} className="field px-10" type="search" maxLength={100} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}/>{value && <button type="button" className="absolute right-2 top-1.5 rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" onClick={() => onChange('')} aria-label="Xóa từ khóa tìm kiếm"><X size={17}/></button>}</div>
 }
 
 export function StatusBadge({ status }: { status?: string | null }) {

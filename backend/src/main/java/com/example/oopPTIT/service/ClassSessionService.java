@@ -37,7 +37,8 @@ public class ClassSessionService {
         var transaction = new TransactionTemplate(transactionManager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
-        // session_no is globally unique; retry a concurrent allocation in a fresh transaction.
+        // Each class owns an independent 1..n sequence. The locked course-class row
+        // serializes allocations for the same class; retries cover transient DB failures.
         for (int attempt = 1; ; attempt++) {
             try {
                 return transaction.execute(status -> createSessionInTransaction(classId, request));
@@ -59,7 +60,7 @@ public class ClassSessionService {
                 classId, request.getSessionDate(), request.getStartTime(), request.getEndTime())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Class session already exists for this time slot");
         }
-        int lastSessionNo = classSessionRepository.findMaxSessionNo();
+        int lastSessionNo = classSessionRepository.findMaxSessionNoByCourseClassId(classId);
         if (lastSessionNo == Integer.MAX_VALUE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "No class session numbers are available");
         }

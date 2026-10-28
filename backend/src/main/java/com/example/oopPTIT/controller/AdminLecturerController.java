@@ -27,9 +27,10 @@ public class AdminLecturerController {
     @GetMapping
     public ResponseData<ResponsePage<List<LecturerResponse>>> getLecturers(
             @PageableDefault(size = 20, sort = "id") Pageable pageable,
-            @RequestParam(name = "lecturer", required = false) String[] lecturer) {
+            @RequestParam(name = "lecturer", required = false) String[] lecturer,
+            @RequestParam(name = "search", required = false) String search) {
         return new ResponseData<>(HttpStatus.OK.value(), "Lecturers retrieved successfully",
-                lecturerService.advanceSearchWithSpecification(pageable, lecturer));
+                lecturerService.advanceSearchWithSpecification(pageable, lecturer, search));
     }
 
     @GetMapping("/{id}")
@@ -48,5 +49,11 @@ public class AdminLecturerController {
     public ResponseData<LecturerResponse> updateLecturer(@PathVariable("id") Long id,
             @Valid @RequestBody UpdateLecturerRequest request) {
         return new ResponseData<>(HttpStatus.OK.value(), "Lecturer updated successfully", lecturerService.updateLecturer(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseData<Void> deleteLecturer(@PathVariable("id") Long id) {
+        lecturerService.deleteLecturer(id);
+        return new ResponseData<>(HttpStatus.OK.value(), "Lecturer deleted successfully");
     }
 }

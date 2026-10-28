@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -125,9 +126,34 @@ public class CourseClassService {
         return toResponse(courseClassRepository.saveAndFlush(courseClass));
     }
 
+    @Transactional
+    public void deleteCourseClass(Long id) {
+        CourseClass courseClass = courseClassRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Course class not found: " + id));
+        if (!courseClass.getClassSessions().isEmpty() || !courseClass.getStudentHasCourseClasses().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Không thể xóa lớp học phần đã có sinh viên hoặc buổi học");
+        }
+        courseClassRepository.delete(courseClass);
+    }
+
     @Transactional(readOnly = true)
     public ResponsePage<?> findAllCourseClasses(Pageable pageable, String[] courseClass) {
-        return findCourseClasses(pageable, courseClass, Specification.unrestricted());
+        return findAllCourseClasses(pageable, courseClass, null);
+    }
+
+    @Transactional(readOnly = true)
+    public ResponsePage<?> findAllCourseClasses(Pageable pageable, String[] courseClass, String search) {
+        Specification<CourseClass> specification = Specification.unrestricted();
+        if (search != null && !search.isBlank()) {
+            String pattern = "%" + search.strip().toLowerCase(Locale.ROOT) + "%";
+            specification = specification.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("classCode")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("subject").get("subjectCode")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("subject").get("subjectName")), pattern)));
+        }
+        return findCourseClasses(pageable, courseClass, specification);
     }
 
     @Transactional(readOnly = true)
@@ -189,8 +215,13 @@ public class CourseClassService {
                 .maxStudents(courseClass.getMaxStudents())
                 .status(courseClass.getStatus())
                 .subjectId(courseClass.getSubject().getId())
+                .subjectCode(courseClass.getSubject().getSubjectCode())
+                .subjectName(courseClass.getSubject().getSubjectName())
                 .semesterId(courseClass.getSemester().getId())
+                .semesterName(courseClass.getSemester().getName())
                 .lecturerId(courseClass.getLecturer().getId())
+                .lecturerCode(courseClass.getLecturer().getLecturerCode())
+                .lecturerName(courseClass.getLecturer().getFullName())
                 .createdAt(courseClass.getCreatedAt())
                 .updatedAt(courseClass.getUpdatedAt())
                 .build();

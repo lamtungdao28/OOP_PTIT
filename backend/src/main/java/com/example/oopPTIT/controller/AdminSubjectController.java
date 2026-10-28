@@ -31,8 +31,17 @@ public class AdminSubjectController {
         subjectService.updatedSubject(id,request);
         return new ResponseData<>(HttpStatus.ACCEPTED.value(), "Updated subject");
     }
+    @DeleteMapping("/{id}")
+    public ResponseData<Void> deleteSubject(@PathVariable Long id) {
+        subjectService.deleteSubject(id);
+        return new ResponseData<>(HttpStatus.OK.value(), "Subject deleted successfully");
+    }
     @GetMapping
-    public ResponseData<ResponsePage<?>> getSubjectWithSpecification(Pageable pageable, @RequestParam(required = false) String[] subject){
-        return new ResponseData<>(HttpStatus.ACCEPTED.value(), "Get all subject", subjectService.advanceSearchWithSpecification(pageable,subject));
+    public ResponseData<ResponsePage<?>> getSubjectWithSpecification(
+            Pageable pageable,
+            @RequestParam(required = false) String[] subject,
+            @RequestParam(required = false) String search) {
+        return new ResponseData<>(HttpStatus.ACCEPTED.value(), "Get all subject",
+                subjectService.advanceSearchWithSpecification(pageable, subject, search));
     }
 }

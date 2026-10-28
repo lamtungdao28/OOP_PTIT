@@ -17,6 +17,7 @@ Backend Spring Boot quản lý tài khoản, lớp học và điểm danh. Dịc
 | `backend/compose.yaml` | MySQL phát triển trên cổng host `3307` |
 | `backend/mock-data/demo-data.sql` | Dữ liệu demo đầy đủ, nạp thủ công |
 | `backend/src/main/resources/db/face-profile-migration.sql` | Sửa cột embedding của database cũ |
+| `backend/src/main/resources/db/class-session-number-per-class-migration.sql` | Đánh lại số buổi học từ 1 riêng cho từng lớp |
 | `face-service/` | FastAPI, YuNet và SFace trên cổng `8000` |
 
 ## Chạy trên Windows (PowerShell)
@@ -59,7 +60,7 @@ JPA_DDL_AUTO=validate
 
 Tạo `JWT_SECRET` bằng `openssl rand -base64 32` hoặc một công cụ tạo 32 byte ngẫu nhiên rồi mã hóa Base64. `AI_SERVICE_TOKEN` phải giống hệt biến môi trường của FastAPI ở bước 4. Xem [mẫu đầy đủ](backend/.env.example). Spring Boot đọc `.env` rồi `.env.local` **theo working directory `backend/`**; biến môi trường của hệ điều hành/IDE có ưu tiên cao hơn.
 
-Nếu database **hoàn toàn mới và chưa có bảng**, chỉ trong môi trường phát triển: đặt `JPA_DDL_AUTO=update`, chạy Spring Boot một lần để Hibernate tạo schema, dừng ứng dụng, rồi đổi về `validate`. Nếu dùng schema cũ có `face_profiles.embedding` là `TINYBLOB`, chạy [migration](backend/src/main/resources/db/face-profile-migration.sql) trên đúng database để đổi thành `LONGBLOB`; embedding 128 chiều cần 512 byte.
+Nếu database **hoàn toàn mới và chưa có bảng**, chỉ trong môi trường phát triển: đặt `JPA_DDL_AUTO=update`, chạy Spring Boot một lần để Hibernate tạo schema, dừng ứng dụng, rồi đổi về `validate`. Nếu dùng schema cũ có `face_profiles.embedding` là `TINYBLOB`, chạy [migration](backend/src/main/resources/db/face-profile-migration.sql) trên đúng database để đổi thành `LONGBLOB`; embedding 128 chiều cần 512 byte. Với database đã tồn tại từ trước thay đổi đánh số buổi học theo từng lớp, chạy [migration số buổi học](backend/src/main/resources/db/class-session-number-per-class-migration.sql) một lần trước khi khởi động backend mới.
 
 ### 3. Chuẩn bị FastAPI và model
 

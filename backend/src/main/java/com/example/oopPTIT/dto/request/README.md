@@ -177,12 +177,12 @@ All three fields are required, and `endTime` must be after `startTime` on the
 same date. The path ID is the course class ID. ADMIN can create a session in
 any class; a LECTURER must be assigned to that class. Success returns HTTP 201
 with `ClassSessionResponse` in `data`, including the generated ID and timestamps.
-The backend assigns `sessionNo` using the existing globally unique numbering
-rule, not numbering starting at 1 in each class. The same class/date/start/end
-combination returns 409. Concurrent allocation collisions are retried in fresh
-transactions up to three attempts; persistent conflicts return 409.
-Creation does not open attendance; use the returned `data.id` with the separate
-attendance-open endpoint. No entity, schema or mock SQL changes are required.
+The backend assigns `sessionNo` independently inside each course class, starting
+at 1 and increasing to 2, 3, and so on. The same class/date/start/end combination
+returns 409. Concurrent allocation collisions are retried in fresh transactions
+up to three attempts; persistent conflicts return 409. Creation does not open
+attendance; use the returned `data.id` with the separate attendance-open endpoint.
+Existing databases must run `db/class-session-number-per-class-migration.sql` once.
 
 `POST /api/sessions/{id}/attendance/open` reuses `OpenAttendanceSessionRequest`:
 

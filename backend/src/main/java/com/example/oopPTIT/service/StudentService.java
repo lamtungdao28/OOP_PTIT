@@ -13,6 +13,7 @@ import com.example.oopPTIT.entity.Student;
 import com.example.oopPTIT.entity.User;
 import com.example.oopPTIT.exception.DuplicateStudentException;
 import com.example.oopPTIT.repository.UserRepository;
+import com.example.oopPTIT.repository.FaceProfileRepository;
 import com.example.oopPTIT.repository.specification.StudentSpecificationBuilder;
 import com.example.oopPTIT.util.Role;
 import com.example.oopPTIT.util.Status;
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -39,6 +41,7 @@ public class StudentService {
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final FaceProfileRepository faceProfileRepository;
 
     @Transactional
     public StudentResponse createStudent(CreateStudentRequest request) {
@@ -87,6 +90,12 @@ public class StudentService {
 
     @Transactional(readOnly = true)
     public ResponsePage<List<StudentResponse>> advanceSearchWithSpecification(Pageable pageable, String[] student) {
+        return advanceSearchWithSpecification(pageable, student, null);
+    }
+
+    @Transactional(readOnly = true)
+    public ResponsePage<List<StudentResponse>> advanceSearchWithSpecification(
+            Pageable pageable, String[] student, String search) {
         pageable.getSort().forEach(order -> {
             if (!SORT_FIELDS.contains(order.getProperty())) {
                 throw new InvalidStudentFilterException("Unsupported student sort field: " + order.getProperty());
@@ -100,7 +109,15 @@ public class StudentService {
             }
         }
 
-        Page<StudentResponse> students = studentRepository.findAll(builder.build(), pageable)
+        var specification = builder.build();
+        if (search != null && !search.isBlank()) {
+            String pattern = "%" + search.strip().toLowerCase(Locale.ROOT) + "%";
+            specification = specification.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("studentCode")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("fullName")), pattern)));
+        }
+
+        Page<StudentResponse> students = studentRepository.findAll(specification, pageable)
                 .map(item -> new StudentResponse(item.getId(), item.getStudentCode(), item.getFullName(),
                         item.getDateOfBirth(), item.getPhone()));
 
@@ -158,6 +175,21 @@ public class StudentService {
         student.getUser().setUpdatedAt(LocalDateTime.now());
         userRepository.flush();
         return StudentDetailResponse.from(student);
+    }
+
+    @Transactional
+    public void deleteStudent(Long id) {
+        Student student = findStudent(id);
+        if (!student.getStudentHasCourseClasses().isEmpty() || !student.getAttendances().isEmpty()
+                || faceProfileRepository.existsByStudent_Id(id)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "Không thể xóa sinh viên đã có lớp học, điểm danh hoặc hồ sơ khuôn mặt");
+        }
+        User user = student.getUser();
+        studentRepository.delete(student);
+        studentRepository.flush();
+        userRepository.delete(user);
     }
 
     private Student findStudent(Long id) {

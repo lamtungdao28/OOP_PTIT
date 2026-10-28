@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -59,7 +60,22 @@ public class SubjectService {
         subjectRepository.save(subject);
     }
 
+    @Transactional
+    public void deleteSubject(Long id) {
+        Subject subject = subjectRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Subject not found: " + id));
+        if (!subject.getCourseClasses().isEmpty() || !subject.getSemesterHasSubjects().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Không thể xóa học phần đang được sử dụng trong lớp hoặc học kỳ");
+        }
+        subjectRepository.delete(subject);
+    }
+
     public ResponsePage<?> advanceSearchWithSpecification(Pageable pageable, String[] subject){
+        return advanceSearchWithSpecification(pageable, subject, null);
+    }
+
+    public ResponsePage<?> advanceSearchWithSpecification(Pageable pageable, String[] subject, String search){
         Specification<Subject> specification = Specification.unrestricted();
         if(subject != null){
             SubjectSpecificationBuilder builder = new SubjectSpecificationBuilder();
@@ -74,6 +90,12 @@ public class SubjectService {
             if (filters != null) {
                 specification = filters;
             }
+        }
+        if (search != null && !search.isBlank()) {
+            String pattern = "%" + search.strip().toLowerCase(Locale.ROOT) + "%";
+            specification = specification.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("subjectCode")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("subjectName")), pattern)));
         }
         Page<SubjectResponse> subjects = subjectRepository.findAll(specification, pageable)
                 .map(item -> SubjectResponse.builder()

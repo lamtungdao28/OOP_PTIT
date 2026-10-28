@@ -33,9 +33,11 @@ public class AdminCourseClassController {
 
     @GetMapping
     public ResponseData<ResponsePage<?>> getCourseClassWithSpecification(
-            Pageable pageable, @RequestParam(required = false) String[] courseClass) {
+            Pageable pageable,
+            @RequestParam(required = false) String[] courseClass,
+            @RequestParam(required = false) String search) {
         return new ResponseData<>(HttpStatus.ACCEPTED.value(), "Get all course class",
-                courseClassService.findAllCourseClasses(pageable, courseClass));
+                courseClassService.findAllCourseClasses(pageable, courseClass, search));
     }
 
     @GetMapping("/{id}")
@@ -49,6 +51,12 @@ public class AdminCourseClassController {
             @RequestBody @Valid UpdateCourseClassRequest request) {
         return new ResponseData<>(HttpStatus.OK.value(), "Course class updated successfully",
                 courseClassService.updateCourseClass(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseData<Void> deleteCourseClass(@PathVariable Long id) {
+        courseClassService.deleteCourseClass(id);
+        return new ResponseData<>(HttpStatus.OK.value(), "Course class deleted successfully");
     }
 
     @PatchMapping("/{id}/lecturer")

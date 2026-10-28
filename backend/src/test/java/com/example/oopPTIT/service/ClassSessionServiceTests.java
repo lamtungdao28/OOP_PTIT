@@ -52,8 +52,8 @@ class ClassSessionServiceTests {
     }
 
     @Test
-    void retriesGlobalNumberCollisionInANewTransaction() {
-        when(sessions.findMaxSessionNo()).thenReturn(2, 3);
+    void retriesClassNumberCollisionInANewTransaction() {
+        when(sessions.findMaxSessionNoByCourseClassId(10L)).thenReturn(2, 3);
         when(sessions.saveAndFlush(any(ClassSession.class)))
                 .thenThrow(new DataIntegrityViolationException("Concurrent session number"))
                 .thenAnswer(invocation -> {
@@ -79,7 +79,7 @@ class ClassSessionServiceTests {
 
     @Test
     void allocationRetriesAreBoundedAndReturnConflict() {
-        when(sessions.findMaxSessionNo()).thenReturn(2);
+        when(sessions.findMaxSessionNoByCourseClassId(10L)).thenReturn(2);
         when(sessions.saveAndFlush(any(ClassSession.class)))
                 .thenThrow(new DataIntegrityViolationException("Concurrent session number"));
 
@@ -96,7 +96,7 @@ class ClassSessionServiceTests {
     void retriesTransientLockFailureBeforeCreatingSession() {
         when(classes.findByIdForUpdate(10L)).thenThrow(new CannotAcquireLockException("Concurrent writer"))
                 .thenReturn(Optional.of(courseClass));
-        when(sessions.findMaxSessionNo()).thenReturn(0);
+        when(sessions.findMaxSessionNoByCourseClassId(10L)).thenReturn(0);
         when(sessions.saveAndFlush(any(ClassSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         assertThat(service.createSession(10L, request()).sessionNo()).isEqualTo(1);

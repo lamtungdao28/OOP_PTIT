@@ -123,7 +123,7 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
             ownedClass = courseClass("INT001-01", lecturer, subject, semester);
             otherClass = courseClass("INT001-02", otherLecturer, subject, semester);
             ownedSession = attendanceSession(ownedClass, 1);
-            otherSession = attendanceSession(otherClass, 2);
+            otherSession = attendanceSession(otherClass, 1);
             entityManager.persist(StudentHasCourseClass.builder().courseClass(ownedClass).student(student).status(Status.ACTIVE).build());
             entityManager.persist(StudentHasCourseClass.builder().courseClass(otherClass).student(otherStudent).status(Status.ACTIVE).build());
         });
@@ -355,7 +355,7 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value(201))
                 .andExpect(jsonPath("$.data.classId").value(ownedClass.getId().intValue()))
-                .andExpect(jsonPath("$.data.sessionNo").value(3))
+                .andExpect(jsonPath("$.data.sessionNo").value(2))
                 .andExpect(jsonPath("$.data.sessionDate").value(newSessionRequest().getSessionDate().toString()))
                 .andExpect(jsonPath("$.data.startTime").value("09:00:00"))
                 .andExpect(jsonPath("$.data.endTime").value("11:00:00"))
@@ -370,16 +370,15 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
     }
 
     @Test
-    void adminCanCreateSessionsForAnyClassWithGloballyUniqueNumbers() throws Exception {
+    void adminCreatesAnIndependentSessionSequenceForEachClass() throws Exception {
         String token = login("admin", PASSWORD);
-        int expectedNumber = 3;
         for (CourseClass courseClass : List.of(ownedClass, otherClass)) {
             mvc.perform(post("/api/classes/{id}/sessions", courseClass.getId())
                             .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
                             .content(json.writeValueAsString(newSessionRequest())))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.classId").value(courseClass.getId().intValue()))
-                    .andExpect(jsonPath("$.data.sessionNo").value(expectedNumber++));
+                    .andExpect(jsonPath("$.data.sessionNo").value(2));
         }
         assertThat(classSessions.count()).isEqualTo(4);
     }
@@ -447,7 +446,7 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
 
     @Test
     void sessionNumberExhaustionReturnsConflictInsteadOfOverflow() throws Exception {
-        transactions.executeWithoutResult(transaction -> classSession(otherClass, Integer.MAX_VALUE));
+        transactions.executeWithoutResult(transaction -> classSession(ownedClass, Integer.MAX_VALUE));
         mvc.perform(post("/api/classes/{id}/sessions", ownedClass.getId())
                         .header("Authorization", "Bearer " + login("lecturer", PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(newSessionRequest())))
@@ -477,7 +476,7 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
     }
 
     @Test
-    void concurrentRequestsForDifferentClassesAllocateDistinctSessionNumbers() throws Exception {
+    void concurrentRequestsForDifferentClassesAllocateIndependentSessionNumbers() throws Exception {
         String token = login("admin", PASSWORD);
         String body = json.writeValueAsString(newSessionRequest());
         CountDownLatch start = new CountDownLatch(1);
@@ -493,7 +492,7 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
             for (var result : results) assertThat(result.get(20, TimeUnit.SECONDS)).isEqualTo(201);
         }
         assertThat(classSessions.findAll()).extracting(ClassSession::getSessionNo)
-                .containsExactlyInAnyOrder(1, 2, 3, 4);
+                .containsExactlyInAnyOrder(1, 1, 2, 2);
     }
 
     @ParameterizedTest
@@ -743,6 +742,56 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
     }
 
     @Test
+    void adminCanDeleteUnusedManagedEntitiesButReferencedEntitiesAreProtected() throws Exception {
+        Map<String, Long> ids = transactions.execute(transaction -> {
+            User studentUser = user("delete-student", Role.STUDENT);
+            Student unusedStudent = student(studentUser, "DELETE-SV", "0900000098");
+            User lecturerUser = user("delete-lecturer", Role.LECTURER);
+            Lecturer unusedLecturer = lecturer(lecturerUser, "DELETE-GV");
+            Subject unusedSubject = new Subject();
+            unusedSubject.setSubjectCode("DELETE-HP");
+            unusedSubject.setSubjectName("Delete subject");
+            unusedSubject.setCredits(1);
+            entityManager.persist(unusedSubject);
+            Semester semester = entityManager.find(Semester.class, ownedClass.getSemester().getId());
+            CourseClass unusedClass = courseClass("DELETE-CLASS", unusedLecturer, unusedSubject, semester);
+            return Map.of("student", unusedStudent.getId(), "studentUser", studentUser.getId(),
+                    "lecturer", unusedLecturer.getId(), "lecturerUser", lecturerUser.getId(),
+                    "subject", unusedSubject.getId(), "courseClass", unusedClass.getId());
+        });
+        String token = login("admin", PASSWORD);
+
+        mvc.perform(delete("/api/admin/classes/{id}", ids.get("courseClass"))
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/admin/lecturers/{id}", ids.get("lecturer"))
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/admin/subjects/{id}", ids.get("subject"))
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/admin/students/{id}", ids.get("student"))
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        mvc.perform(delete("/api/admin/classes/{id}", ownedClass.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict());
+        mvc.perform(delete("/api/admin/students/{id}", student.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict());
+
+        transactions.executeWithoutResult(transaction -> {
+            assertThat(entityManager.find(CourseClass.class, ids.get("courseClass"))).isNull();
+            assertThat(entityManager.find(Lecturer.class, ids.get("lecturer"))).isNull();
+            assertThat(entityManager.find(Subject.class, ids.get("subject"))).isNull();
+            assertThat(entityManager.find(Student.class, ids.get("student"))).isNull();
+            assertThat(entityManager.find(User.class, ids.get("studentUser"))).isNull();
+            assertThat(entityManager.find(User.class, ids.get("lecturerUser"))).isNull();
+        });
+    }
+
+    @Test
     void studentOnlySeesOwnAttendanceAndEnrolledClasses() throws Exception {
         transactions.executeWithoutResult(transaction -> {
             attendance(student, ownedSession);
@@ -757,7 +806,12 @@ class JwtSecurityIntegrationTests extends SecurityTestSupport {
         mvc.perform(get("/api/students/me/classes").header("Authorization", "Bearer " + token)
                         .param("username", "other-student").param("studentId", otherStudent.getId().toString()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.items.length()").value(1))
-                .andExpect(jsonPath("$.data.items[0].id").value(ownedClass.getId().intValue()));
+                .andExpect(jsonPath("$.data.items[0].id").value(ownedClass.getId().intValue()))
+                .andExpect(jsonPath("$.data.items[0].subjectCode").value("INT001"))
+                .andExpect(jsonPath("$.data.items[0].subjectName").value("Security"))
+                .andExpect(jsonPath("$.data.items[0].semesterName").value("2026-1"))
+                .andExpect(jsonPath("$.data.items[0].lecturerCode").value("GV1"))
+                .andExpect(jsonPath("$.data.items[0].lecturerName").value("GV1"));
     }
 
     @ParameterizedTest

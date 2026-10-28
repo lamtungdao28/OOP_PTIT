@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -53,6 +54,12 @@ public class AdminStudentController {
                 studentService.updateStudentStatus(id, request));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseData<Void> deleteStudent(@PathVariable("id") Long id) {
+        studentService.deleteStudent(id);
+        return new ResponseData<>(HttpStatus.OK.value(), "Student deleted successfully");
+    }
+
     @PostMapping
     public ResponseEntity<ResponseData<StudentResponse>> createStudent(
             @Valid @RequestBody CreateStudentRequest request) {
@@ -64,8 +71,9 @@ public class AdminStudentController {
     @GetMapping
     public ResponseData<ResponsePage<List<StudentResponse>>> searchStudents(
             @PageableDefault(size = 20, sort = "id") Pageable pageable,
-            @RequestParam(name = "student", required = false) String[] student) {
+            @RequestParam(name = "student", required = false) String[] student,
+            @RequestParam(name = "search", required = false) String search) {
         return new ResponseData<>(HttpStatus.OK.value(), "Students retrieved successfully",
-                studentService.advanceSearchWithSpecification(pageable, student));
+                studentService.advanceSearchWithSpecification(pageable, student, search));
     }
 }

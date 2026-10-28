@@ -15,6 +15,7 @@ public interface ClassSessionRepository extends JpaRepository<ClassSession, Long
     boolean existsByCourseClass_IdAndSessionDateAndStartTimeAndEndTime(
             Long classId, LocalDate sessionDate, LocalTime startTime, LocalTime endTime);
 
-    @Query("select coalesce(max(session.sessionNo), 0) from ClassSession session")
-    Integer findMaxSessionNo();
+    @Query("select coalesce(max(session.sessionNo), 0) from ClassSession session "
+            + "where session.courseClass.id = :classId")
+    Integer findMaxSessionNoByCourseClassId(Long classId);
 }

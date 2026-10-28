@@ -1,15 +1,15 @@
-import { BarChart3, BookOpen, CalendarDays, Camera, ChevronLeft, ChevronRight, ClipboardCheck, GraduationCap, History, LayoutDashboard, School, UserRound, UsersRound, X } from 'lucide-react'
+import { BookOpen, CalendarDays, Camera, ChevronLeft, ChevronRight, ClipboardCheck, GraduationCap, History, LayoutDashboard, School, UserRound, UsersRound, X } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/api'
 
-const iconMap = { dashboard: LayoutDashboard, students: GraduationCap, lecturers: UsersRound, subjects: BookOpen, semesters: CalendarDays, classes: School, sessions: CalendarDays, attendance: ClipboardCheck, history: History, reports: BarChart3, face: Camera, profile: UserRound }
+const iconMap = { dashboard: LayoutDashboard, students: GraduationCap, lecturers: UsersRound, subjects: BookOpen, semesters: CalendarDays, classes: School, sessions: CalendarDays, attendance: ClipboardCheck, history: History, face: Camera, profile: UserRound }
 const menus: Record<Role, { label: string; to: string; icon: keyof typeof iconMap }[]> = {
   ADMIN: [
     { label: 'Tổng quan', to: '/admin/dashboard', icon: 'dashboard' }, { label: 'Sinh viên', to: '/admin/students', icon: 'students' }, { label: 'Giảng viên', to: '/admin/lecturers', icon: 'lecturers' }, { label: 'Học phần', to: '/admin/subjects', icon: 'subjects' }, { label: 'Học kỳ', to: '/admin/semesters', icon: 'semesters' }, { label: 'Lớp học phần', to: '/admin/classes', icon: 'classes' },
   ],
   LECTURER: [
-    { label: 'Tổng quan', to: '/lecturer/dashboard', icon: 'dashboard' }, { label: 'Lớp phụ trách', to: '/lecturer/classes', icon: 'classes' }, { label: 'Buổi học', to: '/lecturer/sessions', icon: 'sessions' }, { label: 'Điểm danh', to: '/lecturer/attendance', icon: 'attendance' }, { label: 'Lịch sử điểm danh', to: '/lecturer/history', icon: 'history' }, { label: 'Thống kê', to: '/lecturer/statistics', icon: 'reports' },
+    { label: 'Tổng quan', to: '/lecturer/dashboard', icon: 'dashboard' }, { label: 'Lớp phụ trách', to: '/lecturer/classes', icon: 'classes' }, { label: 'Buổi học', to: '/lecturer/sessions', icon: 'sessions' }, { label: 'Điểm danh', to: '/lecturer/attendance', icon: 'attendance' },
   ],
   STUDENT: [
     { label: 'Tổng quan', to: '/student/dashboard', icon: 'dashboard' }, { label: 'Lớp học của tôi', to: '/student/classes', icon: 'classes' }, { label: 'Đăng ký khuôn mặt', to: '/student/face-registration', icon: 'face' }, { label: 'Lịch sử điểm danh', to: '/student/attendance-history', icon: 'history' }, { label: 'Hồ sơ cá nhân', to: '/student/profile', icon: 'profile' },

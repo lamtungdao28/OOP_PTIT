@@ -11,7 +11,7 @@ export interface Student { id: number; studentCode: string; fullName: string; da
 export interface Lecturer { id: number; lecturerCode: string; fullName: string; department: string; phone: string; username: string; email: string; status: AccountStatus }
 export interface Subject { id: number; subjectCode: string; subjectName: string; credits: number; status: AccountStatus; createdAt?: string; updatedAt?: string }
 export interface Semester { id: number; name: string; createdAt?: string; updatedAt?: string }
-export interface CourseClass { id: number; classCode: string; maxStudents: number; status: AccountStatus; subjectId: number; semesterId: number; lecturerId: number; createdAt?: string; updatedAt?: string }
+export interface CourseClass { id: number; classCode: string; maxStudents: number; status: AccountStatus; subjectId: number; subjectCode: string; subjectName: string; semesterId: number; semesterName: string; lecturerId: number; lecturerCode: string; lecturerName: string; createdAt?: string; updatedAt?: string }
 export interface StudentEnrollment { student: Student; courseClass: CourseClass }
 export interface ClassSession { id: number; classId: number; sessionNo: number; sessionDate: string; startTime: string; endTime: string; createdAt: string; updatedAt: string }
 export interface AttendanceSession { id: number; classSessionId: number; classId: number; openedAt: string; closedAt: string | null; lateAfterMinutes: number; status: SessionStatus }
