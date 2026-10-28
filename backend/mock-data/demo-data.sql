@@ -184,8 +184,8 @@ WHERE NOT EXISTS (
 );
 
 -- 4. Four scenarios per active class: unopened, OPEN, CLOSED, expired but not finalized.
--- session_no is globally UNIQUE in the current entity, not unique per class.
--- The reserved numbers here are NOT primary keys or API path IDs.
+-- session_no is unique inside each class. These high demo values remain useful
+-- for deterministic fixture joins, but are NOT primary keys or API path IDs.
 INSERT INTO class_sessions
     (created_at, updated_at, course_classesid, session_no, session_date, start_time, end_time)
 SELECT @demo_now, @demo_now, course.id, 940000 + seed.class_no * 10 + slot.n,
