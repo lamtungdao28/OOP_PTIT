@@ -34,8 +34,10 @@ public class AdminSemesterController {
 
     @GetMapping
     public ResponseData<ResponsePage<?>> getSemesterWithSpecification(
-            Pageable pageable, @RequestParam(required = false) String[] semester) {
+            Pageable pageable,
+            @RequestParam(required = false) String[] semester,
+            @RequestParam(required = false) String search) {
         return new ResponseData<>(HttpStatus.ACCEPTED.value(), "Get all semester",
-                semesterService.advanceSearchWithSpecification(pageable, semester));
+                semesterService.advanceSearchWithSpecification(pageable, semester, search));
     }
 }

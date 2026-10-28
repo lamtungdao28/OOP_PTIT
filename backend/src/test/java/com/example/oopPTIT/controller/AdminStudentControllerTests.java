@@ -44,7 +44,8 @@ class AdminStudentControllerTests {
                 .thenAnswer(invocation -> Page.<Student>empty(invocation.getArgument(1)));
         mvc = MockMvcBuilders.standaloneSetup(
                 new AdminStudentController(new StudentService(repository,
-                        mock(UserRepository.class), mock(PasswordEncoder.class))))
+                        mock(UserRepository.class), mock(PasswordEncoder.class),
+                        mock(com.example.oopPTIT.repository.FaceProfileRepository.class))))
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .setControllerAdvice(new StudentExceptionHandler()).build();
     }

@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -37,6 +38,11 @@ public class LecturerService {
     private final PasswordEncoder passwordEncoder;
 
     public ResponsePage<List<LecturerResponse>> advanceSearchWithSpecification(Pageable pageable, String[] lecturer) {
+        return advanceSearchWithSpecification(pageable, lecturer, null);
+    }
+
+    public ResponsePage<List<LecturerResponse>> advanceSearchWithSpecification(
+            Pageable pageable, String[] lecturer, String search) {
         pageable.getSort().forEach(order -> {
             if (!SORT_FIELDS.contains(order.getProperty())) {
                 throw new InvalidLecturerFilterException("Unsupported lecturer sort field: " + order.getProperty());
@@ -50,7 +56,16 @@ public class LecturerService {
             }
         }
 
-        Page<LecturerResponse> lecturers = lecturerRepository.findAll(builder.build(), pageable)
+        var specification = builder.build();
+        if (search != null && !search.isBlank()) {
+            String pattern = "%" + search.strip().toLowerCase(Locale.ROOT) + "%";
+            specification = specification.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("lecturerCode")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("fullName")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("department")), pattern)));
+        }
+
+        Page<LecturerResponse> lecturers = lecturerRepository.findAll(specification, pageable)
                 .map(LecturerResponse::from);
 
         return ResponsePage.<List<LecturerResponse>>builder()
@@ -128,6 +143,20 @@ public class LecturerService {
         lecturer.setUpdatedAt(LocalDateTime.now());
         lecturerRepository.flush();
         return LecturerResponse.from(lecturer);
+    }
+
+    @Transactional
+    public void deleteLecturer(Long id) {
+        Lecturer lecturer = findLecturer(id);
+        if (!lecturer.getCourseClasses().isEmpty()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "Không thể xóa giảng viên đang phụ trách lớp học phần");
+        }
+        User user = lecturer.getUser();
+        lecturerRepository.delete(lecturer);
+        lecturerRepository.flush();
+        userRepository.delete(user);
     }
 
     private Lecturer findLecturer(Long id) {

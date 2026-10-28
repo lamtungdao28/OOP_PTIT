@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,6 +33,10 @@ public class SemesterService {
     }
 
     public ResponsePage<?> advanceSearchWithSpecification(Pageable pageable, String[] semester) {
+        return advanceSearchWithSpecification(pageable, semester, null);
+    }
+
+    public ResponsePage<?> advanceSearchWithSpecification(Pageable pageable, String[] semester, String search) {
         Specification<Semester> specification = Specification.unrestricted();
         if (semester != null) {
             SemesterSpecificationBuilder builder = new SemesterSpecificationBuilder();
@@ -46,6 +51,11 @@ public class SemesterService {
             if (filters != null) {
                 specification = filters;
             }
+        }
+        if (search != null && !search.isBlank()) {
+            String pattern = "%" + search.strip().toLowerCase(Locale.ROOT) + "%";
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), pattern));
         }
         Page<SemesterResponse> semesters = semesterRepository.findAll(specification, pageable)
                 .map(item -> SemesterResponse.builder()
